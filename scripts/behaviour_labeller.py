@@ -12,7 +12,7 @@ end_frame = int(sys.argv[3])
 ape_index = int(sys.argv[4])
 ape_activity = sys.argv[5]
 
-file_path = f'dataset/videos/{filename}.mp4'
+file_path = f'../dataset/videos/{filename}.mp4'
 
 if (not os.path.exists(file_path)):
     print(f'error: video {filename} does not exist')
@@ -20,7 +20,7 @@ if (not os.path.exists(file_path)):
 
 # Go through xml files for every frame in range
 for i in range(start_frame, end_frame + 1):
-    xml_file_path = f'dataset/labels/{filename}_frame_{str(i)}.xml'
+    xml_file_path = f'../dataset/labels/{filename}_frame_{str(i)}.xml'
 
     if (not os.path.exists(xml_file_path)):
         print(f'error: XML file for frame {i} for video {filename} does not exist')
@@ -32,7 +32,7 @@ for i in range(start_frame, end_frame + 1):
     if (len(apes) == 0):
         print(f'error: no apes found in frame {str(i)}')
         exit()
-    
+
     if (len(apes) - 1 < ape_index):
         print(f'error: ape index ({ape_index}) higher than number of apes detected in frame {i}')
         exit()
@@ -46,22 +46,21 @@ for i in range(start_frame, end_frame + 1):
 
     # Get ape element
     elements = xmldoc.childNodes[0]
+    print(elements.toprettyxml())
+
     ape = elements.childNodes[ape_start_index + ape_index]
+
+    print(ape.toprettyxml())
 
     # Check if activity already exists for this object
     if (len(ape.getElementsByTagName('activity')) > 0):
         print(f'error: activity already exists for ape {ape_index}')
         exit()
-    
+
     # Append activity element into ape element
     ape.appendChild(activity_element)
 
     # Write to file
-    file_handle = open(xml_file_path,"w")
+    file_handle = open(xml_file_path, "w")
     xmldoc.writexml(file_handle)
     file_handle.close()
-
-
-
-
-
