@@ -69,7 +69,7 @@ for image_id in image_ids_train:
     # do it for all frames
     for frame_no in range(1, no_of_frames + 1):
         convert_annotation(frame_no, image_id)
-        list_file_train.write(f'dataset/frames/{image_id}/{image_id}_frame_{frame_no}.jpg\n')
+        list_file_train.write(f'../dataset/frames/{image_id}/{image_id}_frame_{frame_no}.jpg\n')
     
 list_file_train.close()
 
@@ -81,6 +81,6 @@ for image_id in image_ids_val:
     for frame_no in range(1, no_of_frames + 1):
         # change the pth
         convert_annotation(frame_no, image_id)
-        list_file_val.write(f'dataset/frames/{image_id}/{image_id}_frame_{frame_no}.jpg\n')
+        list_file_val.write(f'../dataset/frames/{image_id}/{image_id}_frame_{frame_no}.jpg\n')
     
 list_file_val.close()
