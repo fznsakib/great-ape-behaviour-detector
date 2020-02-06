@@ -1,3 +1,6 @@
 *.DS_Store
 /darknet
 /dataset
+
+yolo/backup/yolov3.weights
+yolo/darknet53.conv.74
