@@ -1,0 +1,5 @@
+classes = 2
+train = /Users/faizaan/Documents/University/2019-2020/Dissertation/great-ape-behaviour-detector/object_train.txt
+valid = /Users/faizaan/Documents/University/2019-2020/Dissertation/great-ape-behaviour-detector/object_val.txt
+names = /Users/faizaan/Documents/University/2019-2020/Dissertation/great-ape-behaviour-detector/yolo3_object.names
+backup = /Users/faizaan/Documents/University/2019-2020/Dissertation/great-ape-behaviour-detector/backup
