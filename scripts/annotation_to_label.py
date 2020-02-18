@@ -32,7 +32,6 @@ def convert_annotation(frame_no, image_id):
     # Create folder for video if it does not exit
     if (not os.path.exists(out_file_path)):
         os.mkdir(out_file_path)
-        # exit()
     
     out_file_path = f'{out_file_path}/{image_id}_frame_{frame_no}.txt'
     out_file = open(out_file_path, 'w')
@@ -43,6 +42,7 @@ def convert_annotation(frame_no, image_id):
     w = int(size.find('width').text)
     h = int(size.find('height').text)
 
+    out_file.write(f'frame: {frame_no}\n')
     for obj in root.iter('object'):
         cls = obj.find('name').text
         if cls not in classes:
@@ -53,17 +53,32 @@ def convert_annotation(frame_no, image_id):
             xmlbox.find('ymin').text), float(xmlbox.find('ymax').text))
         bb = convert((w, h), b)
         out_file.write(str(cls_id) + " " + " ".join([str(a) for a in bb]) + '\n')
+    
+    # Remove xmin later!
+    for obj in root.iter('object'):
+        cls = obj.find('name').text
+        if cls not in classes:
+            continue
+        cls_id = classes.index(cls)
+        xmlbox = obj.find('bndbox')
+        out_file.write('\n')
+        out_file.write(str(cls_id) + " " + (xmlbox.find('xmin').text))
 
 
 image_ids_train = open('../dataset/splits/trainingdata.txt').read().strip().split()
 image_ids_val = open('../dataset/splits/validationdata.txt').read().strip().split()
+image_ids_test = open('../dataset/splits/testdata.txt').read().strip().split()
 
-list_file_train = open('object_train.txt', 'w')
-list_file_val = open('object_val.txt', 'w')
+list_file_train = open('../train.txt', 'w')
+list_file_val = open('../val.txt', 'w')
+list_file_test = open('../test.txt', 'w')
+
+completed = []
+completed = [f for f in sorted(os.listdir('../dataset/frames'))]
 
 # Convert training annotations
-for image_id in image_ids_train:
-    print(f'Converting training annotations of {image_id}.mp4')
+for i, image_id in enumerate(image_ids_train):
+    print(f'Converting training annotations of {image_id}.mp4 ({i}/{len(image_ids_train)})')
     no_of_frames = len(os.listdir(f'../dataset/annotations/{image_id}'))
 
     # do it for all frames
@@ -73,14 +88,24 @@ for image_id in image_ids_train:
     
 list_file_train.close()
 
-# Convert validation annotations
-for image_id in image_ids_val:
-    print(f'Converting validation annotations of {image_id}.mp4')
+# # Convert validation annotations
+for i, image_id in enumerate(image_ids_val):
+    print(f'Converting training annotations of {image_id}.mp4 ({i}/{len(image_ids_val)})')
     no_of_frames = len(os.listdir(f'../dataset/annotations/{image_id}'))
 
     for frame_no in range(1, no_of_frames + 1):
-        # change the pth
         convert_annotation(frame_no, image_id)
         list_file_val.write(f'../dataset/frames/{image_id}/{image_id}_frame_{frame_no}.jpg\n')
     
 list_file_val.close()
+
+# Convert test annotations
+for i, image_id in enumerate(image_ids_test):   
+    print(f'Converting training annotations of {image_id}.mp4 ({i}/{len(image_ids_test)})')
+    no_of_frames = len(os.listdir(f'../dataset/annotations/{image_id}'))
+
+    for frame_no in range(1, no_of_frames + 1):
+        convert_annotation(frame_no, image_id)
+        list_file_test.write(f'../dataset/frames/{image_id}/{image_id}_frame_{frame_no}.jpg\n')
+    
+list_file_test.close()
