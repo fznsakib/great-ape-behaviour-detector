@@ -14,7 +14,7 @@ def get_frames_with_boxes(videos):
         print(f'Drawing boxes for video no {i}: {video}.mp4')
         
         for i in range(1, 361):
-            xml_file_path = f'../dataset/annotations/{video}/{video}_frame_{str(i)}.xml'
+            xml_file_path = f'../dataset/behaviour_annotations/{video}/{video}_frame_{str(i)}.xml'
             
             if (not os.path.exists(xml_file_path)):
                 print(f'error: video {video} frame no {i} does not exist')
@@ -55,14 +55,19 @@ def stitch_to_video(videos):
             size = (width,height)
             img_array.append(img)
         
-        out = cv2.VideoWriter(f'../dataset/videos/{video}.mp4',cv2.VideoWriter_fourcc(*'MP4V'), 24, size)
+        out = cv2.VideoWriter(f'../dataset/boxed_videos/{video}.mp4',cv2.VideoWriter_fourcc(*'MP4V'), 24, size)
         
         for i in range(len(img_array)):
             out.write(img_array[i])
         out.release()
     
 if __name__ == "__main__":
-    videos = os.listdir('../dataset/frames')
+    if len(sys.argv) != 2:
+        print('error: Please provide the video that needs to be drawn on.')
+
+    # videos = os.listdir('../dataset/frames')
+    videos = [sys.argv[1]]
+    videos = open(sys.argv[1]).read().strip().split()
     get_frames_with_boxes(videos)
     stitch_to_video(videos)
     

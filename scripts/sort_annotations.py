@@ -2,11 +2,12 @@ import numpy
 import glob
 import sys
 import xml.etree.ElementTree as ET
+import tqdm
 
 data_list_path = sys.argv[1]
 video_names = [line.rstrip('\n') for line in open(data_list_path)]
 
-for i, video in enumerate(video_names):
+for i, video in enumerate(tqdm.tqdm(video_names)):
     
     no_of_files = len(glob.glob(f'../dataset/behaviour_annotations/{video}/*.xml'))
     
@@ -40,4 +41,4 @@ for i, video in enumerate(video_names):
         # xmlstr = ET.tostring(tree, encoding="utf-8", method="xml")
         # print(xmlstr.decode("utf-8"))
         
-        tree.write(f'../dataset/annotations/{video}/{video}_frame_{frame_no}.xml')
+        tree.write(f'../dataset/behaviour_annotations/{video}/{video}_frame_{frame_no}.xml')

@@ -10,7 +10,9 @@ if (len(sys.argv) != 2):
 data_list_path = sys.argv[1]
 
 # Get list of video names which need to be split
-filenames = [line.rstrip('\n') for line in open(data_list_path)]
+# filenames = [line.rstrip('\n') for line in open(data_list_path)]
+filenames = open(sys.argv[1]).read().strip().split()
+# filenames = [sys.argv[1]]
 
 try:
     if not os.path.exists('../dataset/frames'):

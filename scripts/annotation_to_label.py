@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 import pickle
 import os
+import sys
 from os import listdir, getcwd
 from os.path import join
 
@@ -24,7 +25,7 @@ def convert(size, box):
 # Convert XML file to label .txt
 def convert_annotation(frame_no, image_id):
     
-    in_file_path = f'../dataset/annotations/{image_id}/{image_id}_frame_{frame_no}.xml'
+    in_file_path = f'../dataset/behaviour_annotations/{image_id}/{image_id}_frame_{frame_no}.xml'
     in_file = open(in_file_path)
     
     out_file_path = f'../dataset/labels/{image_id}'
@@ -42,28 +43,30 @@ def convert_annotation(frame_no, image_id):
     w = int(size.find('width').text)
     h = int(size.find('height').text)
 
-    out_file.write(f'frame: {frame_no}\n')
+    # out_file.write(f'frame: {frame_no}\n')
     for obj in root.iter('object'):
         cls = obj.find('name').text
         if cls not in classes:
             continue
         cls_id = classes.index(cls)
         xmlbox = obj.find('bndbox')
+        object_id = obj.find('id').text
         b = (float(xmlbox.find('xmin').text), float(xmlbox.find('xmax').text), float(
             xmlbox.find('ymin').text), float(xmlbox.find('ymax').text))
         bb = convert((w, h), b)
         out_file.write(str(cls_id) + " " + " ".join([str(a) for a in bb]) + '\n')
-    
-    # Remove xmin later!
-    for obj in root.iter('object'):
-        cls = obj.find('name').text
-        if cls not in classes:
-            continue
-        cls_id = classes.index(cls)
-        xmlbox = obj.find('bndbox')
-        out_file.write('\n')
-        out_file.write(str(cls_id) + " " + (xmlbox.find('xmin').text))
+        # out_file.write('id ' + str(object_id) + " " + " ".join([str(a) for a in bb]) + '\n')
 
+video_names = open(sys.argv[1]).read().strip().split()
+for i, video_id in enumerate(video_names):
+    print(f'Converting training annotations of {video_id}.mp4 ({i}/{len(video_names)})')
+    no_of_frames = len(os.listdir(f'../dataset/annotations/{video_id}'))
+
+    # do it for all frames
+    for frame_no in range(1, no_of_frames + 1):
+        convert_annotation(frame_no, video_id)
+
+exit()
 
 image_ids_train = open('../dataset/splits/trainingdata.txt').read().strip().split()
 image_ids_val = open('../dataset/splits/validationdata.txt').read().strip().split()
