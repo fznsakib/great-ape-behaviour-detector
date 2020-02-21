@@ -1,5 +1,6 @@
 *.DS_Store
 /darknet
 /dataset
+/mini_dataset
 /yolo
 
