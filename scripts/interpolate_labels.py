@@ -12,9 +12,9 @@ if (len(sys.argv) != 5):
     exit()
 
 filename = sys.argv[1]
-start_frame = int(sys.argv[2])
-end_frame = int(sys.argv[3])
-ape_id = int(sys.argv[4])
+ape_id = int(sys.argv[2])
+start_frame = int(sys.argv[3])
+end_frame = int(sys.argv[4])
 
 start_frame_file_path = f'../dataset/behaviour_annotations/{filename}/{filename}_frame_{start_frame}.xml'
 in_file = open(start_frame_file_path)

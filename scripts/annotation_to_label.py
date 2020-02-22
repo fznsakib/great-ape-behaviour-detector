@@ -43,21 +43,32 @@ def convert_annotation(frame_no, image_id):
     w = int(size.find('width').text)
     h = int(size.find('height').text)
 
-    # out_file.write(f'frame: {frame_no}\n')
+    out_file.write(f'frame: {frame_no}\n')
     for obj in root.iter('object'):
         cls = obj.find('name').text
         if cls not in classes:
             continue
         cls_id = classes.index(cls)
         xmlbox = obj.find('bndbox')
-        object_id = obj.find('id').text
+        
+        # if len(obj.findall('id')) == 0:
+        #     print(f'No ID found in frame {frame_no} in video {image_id}')
+        #     continue
+        # if len(obj.findall('activity')) == 0:
+        #     print(f'No activity found in frame {frame_no} in video {image_id}')
+        #     continue
+            
+        # object_id = obj.find('id').text
+        # activity = obj.find('activity').text
+        
         b = (float(xmlbox.find('xmin').text), float(xmlbox.find('xmax').text), float(
             xmlbox.find('ymin').text), float(xmlbox.find('ymax').text))
         bb = convert((w, h), b)
         out_file.write(str(cls_id) + " " + " ".join([str(a) for a in bb]) + '\n')
         # out_file.write('id ' + str(object_id) + " " + " ".join([str(a) for a in bb]) + '\n')
 
-video_names = open(sys.argv[1]).read().strip().split()
+video_names = [sys.argv[1]]
+# video_names = open(sys.argv[1]).read().strip().split()
 for i, video_id in enumerate(video_names):
     print(f'Converting training annotations of {video_id}.mp4 ({i}/{len(video_names)})')
     no_of_frames = len(os.listdir(f'../dataset/annotations/{video_id}'))

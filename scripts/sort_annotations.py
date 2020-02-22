@@ -6,6 +6,7 @@ import tqdm
 
 data_list_path = sys.argv[1]
 video_names = [line.rstrip('\n') for line in open(data_list_path)]
+# video_names = ['MsU8rQkfps', 'OMZtzH6RwA', 'peFYH4rAIK', 'Rsas1MASXn', 'ys642Q7e7S']
 
 for i, video in enumerate(tqdm.tqdm(video_names)):
     

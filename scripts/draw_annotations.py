@@ -35,8 +35,20 @@ def get_frames_with_boxes(videos):
                 
                 image = cv2.rectangle(image, (int(xmin), int(ymin)), (int(xmax), int(ymax)), (0, 255, 0), 2)
             
+            # Write frame number
+            font = cv2.FONT_HERSHEY_SIMPLEX             
+            org = (50, 50) 
+            fontScale = 1
+            color = (0, 0, 255) 
+            thickness = 2
+            
+            # Using cv2.putText() method 
+            image = cv2.putText(image, str(i), org, font, fontScale, color, thickness, cv2.LINE_AA)
+            
             # Save image
-            cv2.imwrite(image_file_path, image)    
+            cv2.imwrite(image_file_path, image)   
+            
+             
 
 # Get all frames with bounding box and stitch into video
 def stitch_to_video(videos):
@@ -55,7 +67,7 @@ def stitch_to_video(videos):
             size = (width,height)
             img_array.append(img)
         
-        out = cv2.VideoWriter(f'../dataset/boxed_videos/{video}.mp4',cv2.VideoWriter_fourcc(*'MP4V'), 24, size)
+        out = cv2.VideoWriter(f'../dataset/framed_videos/{video}.mp4',cv2.VideoWriter_fourcc(*'MP4V'), 24, size)
         
         for i in range(len(img_array)):
             out.write(img_array[i])
@@ -67,7 +79,7 @@ if __name__ == "__main__":
 
     # videos = os.listdir('../dataset/frames')
     videos = [sys.argv[1]]
-    videos = open(sys.argv[1]).read().strip().split()
+    # videos = open(sys.argv[1]).read().strip().split()
     get_frames_with_boxes(videos)
     stitch_to_video(videos)
     

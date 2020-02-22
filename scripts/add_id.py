@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 
 if (len(sys.argv) != 6):
     print('error: Arguments should be in the form:\n')
-    print('python behaviour_labeller.py [filename] [start frame] [end frame] [ape no] [ape activity]')
+    print('python behaviour_labeller.py [filename] [start frame] [end frame] [ape no] [ape id]')
     exit()
 
 filename = sys.argv[1]
