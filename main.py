@@ -1,17 +1,22 @@
 """""" """""" """""" """""" """""" """""" """""" """
 Imports
 """ """""" """""" """""" """""" """""" """""" """"""
+import os
 import torch
+import torchvision
+import argparse
 import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 import torch.optim as optim
-from torch.optim import lr_scheduler
 import torch.backends.cudnn as cudnn
+from multiprocessing import cpu_count
+from torch.optim import lr_scheduler
 from torch.autograd import Variable
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-import torchvision
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.tensorboard import SummaryWriter
+from pathlib import Path
 
 """""" """""" """""" """""" """""" """""" """""" """
 Custom Library Imports
@@ -19,6 +24,7 @@ Custom Library Imports
 import spatial
 import temporal
 import trainer
+from dataloader.dataset import GreatApeDataset
 
 """""" """""" """""" """""" """""" """""" """""" """
 GPU Initialisation
@@ -35,7 +41,7 @@ else:
 Argument Parser
 """ """""" """""" """""" """""" """""" """""" """"""
 
-default_dataset_dir = f"{os.getcwd()}/mini_dataset/"
+default_dataset_dir = f"{os.getcwd()}/mini_dataset"
 
 parser = argparse.ArgumentParser(
     description="A spatial & temporal-based two-stream convolutional neural network for recognising great ape behaviour.",
@@ -47,7 +53,7 @@ parser.add_argument("--learning-rate", default=0.001, type=float, help="Learning
 parser.add_argument("--sgd-momentum", default=0.9, type=float, help="SGD momentum")
 parser.add_argument("--spatial-dropout", default=0.5, type=float, help="Spatial dropout probability")
 parser.add_argument("--temporal-dropout", default=0.5, type=float, help="Temporal dropout probability")
-parser.add_argument("--checkpoint-path", default=Path("/weights"), type=Path)
+parser.add_argument("--checkpoint-path", default=Path("/checkpoints"), type=Path)
 parser.add_argument(
     "--epochs", default=50, type=int, help="Number of epochs to train the network for"
 )
@@ -57,7 +63,13 @@ parser.add_argument(
     default=1,
     help="Save a checkpoint every N epochs",
 )
-
+parser.add_argument(
+    "-j",
+    "--worker-count",
+    default=cpu_count(),
+    type=int,
+    help="Number of worker processes used to load data.",
+)
 
 """""" """""" """""" """""" """""" """""" """""" """
 Main
@@ -65,8 +77,14 @@ Main
 
 def main(args):
 
+    print('here')
+    
     # TODO: Mean flow subtraction
-    # TODO: Create dataloader
+    
+    # TODO: Initialise dataset
+    # TODO: Initialise dataloader
+    train_dataset = GreatApeDataset(f'{args.dataset_root}/splits/trainingdata.txt', f'{args.dataset_root}/frames', f'{args.dataset_root}/annotations')
+    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False, num_workers=args.worker_count)
     
     # Initialise CNNs for spatial and temporal streams
     spatial_model = spatial.CNN(
@@ -95,7 +113,7 @@ def main(args):
     summary_writer = SummaryWriter(str(log_dir), flush_secs=5)
 
     # Initialise trainer with both CNNs
-    trainer = trainer.Trainer(
+    cnn_trainer = trainer.Trainer(
         spatial_model,
         temporal_model,
         train_loader,
@@ -111,8 +129,9 @@ def main(args):
         args.log_dir,
     )
 
+    
     # Begin training
-    trainer.train(
+    cnn_trainer.train(
         args.epochs,
         args.val_frequency,
         print_frequency=args.print_frequency,
@@ -146,3 +165,8 @@ def get_summary_writer_log_dir(args: argparse.Namespace) -> str:
         i += 1
     return str(tb_log_dir)
 
+"""""" """""" """""" """""" """""" """""" """""" """
+Call main()
+""" """""" """""" """""" """""" """""" """""" """"""
+if __name__ == "__main__":
+    main(parser.parse_args())

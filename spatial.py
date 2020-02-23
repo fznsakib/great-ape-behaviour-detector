@@ -1,7 +1,12 @@
 import torch
 import torch.nn as nn
 import glob
+from utils import *
 
+# class ImageShape(NamedTuple):
+#     height: int
+#     width: int
+#     channels: int
 
 class CNN(nn.Module):
     def __init__(self, height: int, width: int, channels: int, dropout: float):

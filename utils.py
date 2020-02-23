@@ -1,6 +1,11 @@
 import numpy as np
+from typing import Union, NamedTuple
 
-
+class ImageShape(NamedTuple):
+    height: int
+    width: int
+    channels: int
+    
 # Compute the fusion logits across the spatial and temporal stream to perform average fusion
 def average_fusion(spatial_logits, temporal_logits):
     fusion_logits = np.mean(np.array([spatial_logits, temporal_logits]), axis=0)

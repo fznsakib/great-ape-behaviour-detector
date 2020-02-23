@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
+from torch.optim.optimizer import Optimizer
+from torch.utils.tensorboard import SummaryWriter
+from pathlib import Path
 from utils import *
 
 class Trainer:
