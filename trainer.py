@@ -9,28 +9,20 @@ from utils import *
 class Trainer:
     def __init__(
         self,
-        spatial_model: nn.Module,
-        temporal_model: nn.Module,
+        spatial: nn.Module,
+        temporal: nn.Module,
         train_loader: DataLoader,
         test_loader: DataLoader,
-        spatial_criterion: nn.Module,
-        temporal_criterion: nn.Module,
-        spatial_optimiser: Optimizer,
-        temporal_optimiser: Optimizer,
         summary_writer: SummaryWriter,
         device: torch.device,
         checkpoint_frequency: int,
         save_path: Path,
         log_dir: str,
     ):
-        self.spatial_model = spatial_model.to(device)
-        self.temporal_model = temporal_model.to(device)
+        self.spatial = spatial.to(device)
+        self.temporal = temporal.to(device)
         self.train_loader = train_loader
         self.test_loader = test_loader
-        self.spatial_criterion = spatial_criterion
-        self.temporal_criterion = temporal_criterion
-        self.spatial_optimiser = spatial_optimiser
-        self.temporal_optimiser = temporal_optimiser
         self.summary_writer = summary_writer
         self.device = device
         self.checkpoint_frequency = checkpoint_frequency
@@ -48,19 +40,22 @@ class Trainer:
     ):
 
         # Activate training mode
-        self.spatial_model.train()
-        self.temporal_model.train()
+        self.spatial.train()
+        self.temporal.train()
 
         # Train for requested number of epochs
         for epoch in range(start_epoch, epochs):
-            self.spatial_model.train()
-            self.temporal_model.train()
+            self.spatial.train()
+            self.temporal.train()
 
             data_load_start_time = time.time()
 
             for i, (spatial_data, temporal_data, labels) in enumerate(
                 self.train_loader
             ):
+                # Set gradients to zero
+                self.spatial.optimiser.zero_grad()
+                self.temporal.optimiser.zero_grad()
 
                 spatial_data = spatial_data.to(self.device)
                 temporal_data = temporal_data.to(self.device)
@@ -69,22 +64,20 @@ class Trainer:
                 data_load_end_time = time.time()
 
                 # Compute the forward pass of the model
-                spatial_logits = self.spatial_model.forward(spatial_data)
-                temporal_logits = self.temporal_model.forward(temporal_data)
+                spatial_logits = self.spatial(spatial_data)
+                temporal_logits = self.temporal(temporal_data)
 
-                # Compute the loss using self.criterion and store it
-                spatial_loss = self.spatial_criterion(spatial_logits, labels)
-                temporal_loss = self.temporal_criterion(temporal_logits, labels)
+                # Compute the loss using model criterion and store it
+                spatial_loss = self.spatial.criterion(spatial_logits, labels)
+                temporal_loss = self.temporal.criterion(temporal_logits, labels)
 
                 # Compute the backward pass
                 spatial_loss.backward()
                 temporal_loss.backward()
 
-                # Step the optimizer and then zero out the gradient buffers.
-                self.spatial_optimiser.step()
-                self.spatial_optimiser.zero_grad()
-                self.temporal_optimiser.step()
-                self.temporal_optimiser.zero_grad()
+                # Step the optimiser
+                self.spatial.optimiser.step()
+                self.temporal.optimiser.step()
 
                 # Compute accuracy
                 with torch.no_grad():
@@ -186,8 +179,8 @@ class Trainer:
 
         # Turn on evaluation mode for network. This ensures that dropout is not applied
         # during validation and a different form of batch normalisation is used.
-        self.spatial_model.eval()
-        self.temporal_model.eval()
+        self.spatial.eval()
+        self.temporal.eval()
 
         # No need to track gradients for validation, we're not optimizing.
         with torch.no_grad():
@@ -198,11 +191,11 @@ class Trainer:
                 temporal_data = temporal_data.to(self.device)
                 labels = labels.to(self.device)
                 
-                spatial_logits = self.spatial_model(spatial_data)
-                temporal_logits = self.temporal_model(temporal_data)
+                spatial_logits = self.spatial(spatial_data)
+                temporal_logits = self.temporal(temporal_data)
                 
-                spatial_loss = self.spatial_criterion(spatial_logits, labels)
-                temporal_loss = self.temporal_criterion(temporal_logits, labels)
+                spatial_loss = self.spatial.criterion(spatial_logits, labels)
+                temporal_loss = self.temporal.criterion(temporal_logits, labels)
                 
                 total_spatial_loss += spatial_loss.item()
                 total_temporal_loss += temporal_loss.item()

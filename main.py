@@ -54,58 +54,48 @@ parser.add_argument("--sgd-momentum", default=0.9, type=float, help="SGD momentu
 parser.add_argument("--spatial-dropout", default=0.5, type=float, help="Spatial dropout probability")
 parser.add_argument("--temporal-dropout", default=0.5, type=float, help="Temporal dropout probability")
 parser.add_argument("--checkpoint-path", default=Path("/checkpoints"), type=Path)
+parser.add_argument("--epochs", default=50, type=int, help="Number of epochs to train the network for")
 parser.add_argument(
-    "--epochs", default=50, type=int, help="Number of epochs to train the network for"
+    "--checkpoint-frequency", type=int, default=1, help="Save a checkpoint every N epochs",
 )
 parser.add_argument(
-    "--checkpoint-frequency",
-    type=int,
-    default=1,
-    help="Save a checkpoint every N epochs",
-)
-parser.add_argument(
-    "-j",
-    "--worker-count",
-    default=cpu_count(),
-    type=int,
-    help="Number of worker processes used to load data.",
+    "-j", "--worker-count", default=cpu_count(), type=int, help="Number of worker processes used to load data.",
 )
 
 """""" """""" """""" """""" """""" """""" """""" """
 Main
 """ """""" """""" """""" """""" """""" """""" """"""
 
+
 def main(args):
 
-    print('here')
-    
     # TODO: Mean flow subtraction
-    
+
     # TODO: Initialise dataset
     # TODO: Initialise dataloader
-    train_dataset = GreatApeDataset(f'{args.dataset_root}/splits/trainingdata.txt', f'{args.dataset_root}/frames', f'{args.dataset_root}/annotations')
+    train_dataset = GreatApeDataset(
+        f"{args.dataset_root}/splits/trainingdata.txt",
+        f"{args.dataset_root}/frames",
+        f"{args.dataset_root}/annotations",
+    )
     train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False, num_workers=args.worker_count)
-    
+
+    # Define classes available in dataset
+    classes = [
+        "standing",
+        "sitting",
+        "sitting_on_back",
+        "walking",
+        "running",
+        "climbing_up",
+        "climbing_down",
+        "hanging",
+        "camera_interaction",
+    ]
+
     # Initialise CNNs for spatial and temporal streams
-    spatial_model = spatial.CNN(
-        height=224, width=224, channels=10, dropout=args.spatial_dropout
-    )
-
-    temporal_model = temporal.CNN(
-        height=224, width=224, channels=10, dropout=args.temporal_dropout
-    )
-
-    # Define loss criterion as softmax cross entropy
-    spatial_criterion = nn.CrossEntropyLoss()
-    temporal_criterion = nn.CrossEntropyLoss()
-
-    # Define optimisers
-    spatial_optimiser = optim.SGD(spatial_model.parameters(), lr=0.001, momentum=0.9)
-    temporal_optimiser = optim.SGD(temporal_model.parameters(), lr=0.001, momentum=0.9)
-
-    # Schedulers for decaying the learning rate over time. May be needed later on.
-    # spatial_scheduler = lr_scheduler.StepLR(spat_optimizer, step_size=10, gamma=0.1)
-    # temporal_scheduler = lr_scheduler.StepLR(temp_optimizer, step_size=10, gamma=0.1)
+    spatial_model = spatial.CNN(num_classes=len(classes), device=DEVICE)
+    temporal_model = temporal.CNN(num_classes=len(classes), device=DEVICE)
 
     # Initialise log writing
     log_dir = get_summary_writer_log_dir(args)
@@ -118,10 +108,6 @@ def main(args):
         temporal_model,
         train_loader,
         test_loader,
-        spatial_criterion,
-        temporal_criterion,
-        spatial_optimiser,
-        temporal_optimiser,
         summary_writer,
         DEVICE,
         args.checkpoint_frequency,
@@ -129,11 +115,10 @@ def main(args):
         args.log_dir,
     )
 
-    
     # Begin training
     cnn_trainer.train(
-        args.epochs,
-        args.val_frequency,
+        epochs=args.epochs,
+        val_frequency=args.val_frequency,
         print_frequency=args.print_frequency,
         log_frequency=args.log_frequency,
     )
@@ -164,6 +149,7 @@ def get_summary_writer_log_dir(args: argparse.Namespace) -> str:
             return str(tb_log_dir)
         i += 1
     return str(tb_log_dir)
+
 
 """""" """""" """""" """""" """""" """""" """""" """
 Call main()
