@@ -3,5 +3,7 @@
 /dataset
 /mini_dataset
 /yolo
-/__pycache__
+__pycache__/
+*.json
 /logs
+/.vscode
