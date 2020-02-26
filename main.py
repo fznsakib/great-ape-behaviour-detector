@@ -13,6 +13,7 @@ import torch.backends.cudnn as cudnn
 from multiprocessing import cpu_count
 from torch.optim import lr_scheduler
 from torch.autograd import Variable
+from torchvision import transforms, utils
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -25,6 +26,7 @@ import spatial
 import temporal
 import trainer
 from dataloader.dataset import GreatApeDataset
+from utils import *
 
 """""" """""" """""" """""" """""" """""" """""" """
 GPU Initialisation
@@ -48,49 +50,105 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument("--dataset-root", default=default_dataset_dir)
+parser.add_argument("--classes", default=f'mini_dataset/classes.txt')
 parser.add_argument("--log-dir", default=Path("logs"), type=Path)
 parser.add_argument("--learning-rate", default=0.001, type=float, help="Learning rate")
 parser.add_argument("--sgd-momentum", default=0.9, type=float, help="SGD momentum")
-parser.add_argument("--spatial-dropout", default=0.5, type=float, help="Spatial dropout probability")
-parser.add_argument("--temporal-dropout", default=0.5, type=float, help="Temporal dropout probability")
 parser.add_argument("--checkpoint-path", default=Path("/checkpoints"), type=Path)
-parser.add_argument("--epochs", default=50, type=int, help="Number of epochs to train the network for")
 parser.add_argument(
-    "--checkpoint-frequency", type=int, default=1, help="Save a checkpoint every N epochs",
+    "--spatial-dropout", default=0.5, type=float, help="Spatial dropout probability"
 )
 parser.add_argument(
-    "-j", "--worker-count", default=cpu_count(), type=int, help="Number of worker processes used to load data.",
+    "--temporal-dropout", default=0.5, type=float, help="Temporal dropout probability"
+)
+parser.add_argument(
+    "--epochs", default=50, type=int, help="Number of epochs to train the network for"
+)
+parser.add_argument(
+    "--checkpoint-frequency", type=int, default=1, help="Save a checkpoint every N epochs"
+)
+parser.add_argument(
+    "--val-frequency", type=int, default=1, help="Test the model on validation data every N epochs"
+)
+parser.add_argument(
+    "--print-frequency", type=int, default=1, help="Print model metrics every N epochs"
+)
+parser.add_argument(
+    "--log-frequency", type=int, default=1, help="Log to metrics Tensorboard every N epochs"
+)
+parser.add_argument(
+    "-j",
+    "--worker-count",
+    default=cpu_count(),
+    type=int,
+    help="Number of worker processes used to load data.",
 )
 
 """""" """""" """""" """""" """""" """""" """""" """
 Main
 """ """""" """""" """""" """""" """""" """""" """"""
 
+
 def main(args):
 
+    classes = open(args.classes).read().strip().split()
+    
     # TODO: Mean flow subtraction
-
-    # TODO: Initialise dataset
-    # TODO: Initialise dataloader
     train_dataset = GreatApeDataset(
-        f"{args.dataset_root}/splits/trainingdata.txt",
-        f"{args.dataset_root}/frames",
-        f"{args.dataset_root}/annotations",
+        mode="train",
+        sample_interval=10,
+        no_of_optical_flow=5,
+        activity_duration_threshold=72,
+        video_names=f"{args.dataset_root}/splits/trainingdata.txt",
+        classes=classes,
+        frame_dir=f"{args.dataset_root}/frames",
+        annotations_dir=f"{args.dataset_root}/annotations",
+        spatial_transform=transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]
+        ),
+        temporal_transform=transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5], std=[0.5]),
+            ]
+        ),
     )
-    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False, num_workers=args.worker_count)
-
-    # Define classes available in dataset
-    classes = [
-        "standing",
-        "sitting",
-        "sitting_on_back",
-        "walking",
-        "running",
-        "climbing_up",
-        "climbing_down",
-        "hanging",
-        "camera_interaction",
-    ]
+    train_loader = DataLoader(
+        train_dataset, batch_size=1, shuffle=False, num_workers=args.worker_count
+    )
+    
+    test_dataset = GreatApeDataset(
+        mode="validation",
+        sample_interval=10,
+        no_of_optical_flow=5,
+        activity_duration_threshold=72,
+        video_names=f"{args.dataset_root}/splits/validationdata.txt",
+        classes=classes,
+        frame_dir=f"{args.dataset_root}/frames",
+        annotations_dir=f"{args.dataset_root}/annotations",
+        spatial_transform=transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]
+        ),
+        temporal_transform=transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5], std=[0.5]),
+            ]
+        ),
+    )
+    test_loader = DataLoader(
+        test_dataset, batch_size=1, shuffle=False, num_workers=args.worker_count
+    )
 
     # Initialise CNNs for spatial and temporal streams
     spatial_model = spatial.CNN(num_classes=len(classes), device=DEVICE)

@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from torch.optim.optimizer import Optimizer
 from torch.utils.tensorboard import SummaryWriter
+import time
 from pathlib import Path
 from utils import *
 
@@ -19,8 +20,8 @@ class Trainer:
         save_path: Path,
         log_dir: str,
     ):
-        self.spatial = spatial.to(device)
-        self.temporal = temporal.to(device)
+        self.spatial = spatial
+        self.temporal = temporal
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.summary_writer = summary_writer
@@ -40,13 +41,13 @@ class Trainer:
     ):
 
         # Activate training mode
-        self.spatial.train()
-        self.temporal.train()
+        self.spatial.model.train()
+        self.temporal.model.train()
 
         # Train for requested number of epochs
         for epoch in range(start_epoch, epochs):
-            self.spatial.train()
-            self.temporal.train()
+            self.spatial.model.train()
+            self.temporal.model.train()
 
             data_load_start_time = time.time()
 
@@ -64,8 +65,8 @@ class Trainer:
                 data_load_end_time = time.time()
 
                 # Compute the forward pass of the model
-                spatial_logits = self.spatial(spatial_data)
-                temporal_logits = self.temporal(temporal_data)
+                spatial_logits = self.spatial.model(spatial_data)
+                temporal_logits = self.temporal.model(temporal_data)
 
                 # Compute the loss using model criterion and store it
                 spatial_loss = self.spatial.criterion(spatial_logits, labels)
@@ -122,7 +123,7 @@ class Trainer:
                     self.save_model(validated_accuracy)
 
                 # Switch back to train mode after validation
-                self.model.train()
+                self.model.model.train()
 
     def print_metrics(
         self,
@@ -179,8 +180,8 @@ class Trainer:
 
         # Turn on evaluation mode for network. This ensures that dropout is not applied
         # during validation and a different form of batch normalisation is used.
-        self.spatial.eval()
-        self.temporal.eval()
+        self.spatial.model.eval()
+        self.temporal.model.eval()
 
         # No need to track gradients for validation, we're not optimizing.
         with torch.no_grad():
@@ -191,8 +192,8 @@ class Trainer:
                 temporal_data = temporal_data.to(self.device)
                 labels = labels.to(self.device)
                 
-                spatial_logits = self.spatial(spatial_data)
-                temporal_logits = self.temporal(temporal_data)
+                spatial_logits = self.spatial.model(spatial_data)
+                temporal_logits = self.temporal.model(temporal_data)
                 
                 spatial_loss = self.spatial.criterion(spatial_logits, labels)
                 temporal_loss = self.temporal.criterion(temporal_logits, labels)

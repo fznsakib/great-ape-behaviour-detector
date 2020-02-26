@@ -41,4 +41,39 @@ def get_no_of_apes(annotations_dir, video):
                 no_of_apes = ape_id
     
     return no_of_apes
+
+"""
+Get size (height, width) of a given video
+"""
+def get_image_size(annotations_dir, video):
+    root = get_root(annotations_dir, video, 1)
+    size = root.find('size')
+    height = int(size[0].text)
+    width = int(size[1].text)
+    return height, width
+    
+
+"""
+Get coordinates from ape XML element
+"""
+def get_ape_coordinates(ape):
+    coordinates = []
+    
+    for coordinate in ape.find('bndbox'):
+        coordinates.append(float(coordinate.text))
+
+    return coordinates
+
+"""
+Get the ith sample from the dataset
+"""
+def find_sample(samples, index):
+    current_index = 0
+        
+    for key in samples.keys():
+        for i, value in enumerate(samples[key]):
+            if current_index == index:
+                return key, samples[key][i]['ape_id'], samples[key][i]['start_frame'], samples[key][i]['activity']
+            current_index += 1
+
     
