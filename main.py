@@ -66,7 +66,6 @@ parser.add_argument(
 Main
 """ """""" """""" """""" """""" """""" """""" """"""
 
-
 def main(args):
 
     # TODO: Mean flow subtraction
