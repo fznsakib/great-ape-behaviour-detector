@@ -1,6 +1,4 @@
-import torch
 import torch.nn as nn
-import glob
 import torchvision.models as models
 import torch.optim as optim
 

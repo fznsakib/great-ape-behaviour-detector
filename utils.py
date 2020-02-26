@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from typing import Union, NamedTuple
+from typing import NamedTuple
 
 class ImageShape(NamedTuple):
     height: int

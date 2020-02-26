@@ -5,17 +5,11 @@ import os
 import torch
 import torchvision
 import argparse
-import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
-import torch.optim as optim
-import torch.backends.cudnn as cudnn
 from multiprocessing import cpu_count
-from torch.optim import lr_scheduler
-from torch.autograd import Variable
 from torchvision import transforms, utils
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from pathlib import Path
 

@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
-from torch.optim.optimizer import Optimizer
+from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import time
 from pathlib import Path
@@ -211,7 +210,7 @@ class Trainer:
         accuracy = compute_accuracy()
 
         # Get per class accuracies and sort by label value (0...9)
-        class_accuracy = compute_class_accuracy()
+        compute_class_accuracy()
 
         # Get average loss for each stream
         average_spatial_loss = total_spatial_loss / len(self.test_loader)

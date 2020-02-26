@@ -5,12 +5,10 @@ import pandas as pd
 from skimage import io, transform
 import numpy as np
 import matplotlib.pyplot as plt
-from torch.utils.data import Dataset, DataLoader
 from torchvision.utils import save_image
 from torchvision import transforms
 from PIL import Image
 import glob
-import xml.etree.ElementTree as ET
 import tqdm
 import json
 from dataloader.data_utils import *
