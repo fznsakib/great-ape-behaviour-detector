@@ -54,6 +54,7 @@ class Trainer:
             for i, (spatial_data, temporal_data, labels) in enumerate(
                 self.train_loader
             ):
+                print(spatial_data.shape)
                 # Set gradients to zero
                 self.spatial.optimiser.zero_grad()
                 self.temporal.optimiser.zero_grad()
@@ -79,12 +80,12 @@ class Trainer:
                 # Step the optimiser
                 self.spatial.optimiser.step()
                 self.temporal.optimiser.step()
-
+                
                 # Compute accuracy
                 with torch.no_grad():
                     fusion_logits = average_fusion(spatial_logits, temporal_logits)
                     predictions = fusion_logits.argmax(-1)
-                    accuracy = accuracy(labels, predictions)
+                    accuracy = compute_accuracy(labels, predictions)
 
                 data_load_time = data_load_end_time - data_load_start_time
                 step_time = time.time() - data_load_end_time
@@ -208,10 +209,10 @@ class Trainer:
                 results["labels"].extend(list(labels.cpu().numpy()))
 
         # Get accuracy by checking for correct predictions across all predictions
-        accuracy = accuracy()
+        accuracy = compute_accuracy()
 
         # Get per class accuracies and sort by label value (0...9)
-        class_accuracy = class_accuracy()
+        class_accuracy = compute_class_accuracy()
 
         # Get average loss for each stream
         average_spatial_loss = total_spatial_loss / len(self.test_loader)

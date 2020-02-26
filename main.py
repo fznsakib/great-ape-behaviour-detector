@@ -119,7 +119,7 @@ def main(args):
         ),
     )
     train_loader = DataLoader(
-        train_dataset, batch_size=1, shuffle=False, num_workers=args.worker_count
+        train_dataset, batch_size=2, shuffle=False, num_workers=args.worker_count
     )
     
     test_dataset = GreatApeDataset(
@@ -147,7 +147,7 @@ def main(args):
         ),
     )
     test_loader = DataLoader(
-        test_dataset, batch_size=1, shuffle=False, num_workers=args.worker_count
+        test_dataset, batch_size=2, shuffle=False, num_workers=args.worker_count
     )
 
     # Initialise CNNs for spatial and temporal streams

@@ -17,6 +17,11 @@ class CNN():
         in_features = self.model.classifier[6].in_features
         self.model.classifier[6] = nn.Linear(in_features, num_classes)
         
+        # Add an initial convolutional layer to convert the temporal input of 10 channels to the required 3
+        conv1 = [nn.Conv2d(10, 3, kernel_size=3, stride=1, padding=1, dilation=1, groups=1, bias=True)]
+        conv1.extend(list(self.model.features))  
+        self.model.features= nn.Sequential(*conv1) 
+        
         # Send the model to GPU
         self.model = self.model.to(device)
         
