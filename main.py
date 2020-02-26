@@ -54,7 +54,11 @@ parser.add_argument("--classes", default=f'mini_dataset/classes.txt')
 parser.add_argument("--log-dir", default=Path("logs"), type=Path)
 parser.add_argument("--learning-rate", default=0.001, type=float, help="Learning rate")
 parser.add_argument("--sgd-momentum", default=0.9, type=float, help="SGD momentum")
+parser.add_argument("--batch-size", default=32, type=int, help="Batch size")
 parser.add_argument("--checkpoint-path", default=Path("/checkpoints"), type=Path)
+parser.add_argument("--sample-interval", default=10, type=int, help="Frame interval at which samples are taken")
+parser.add_argument("--optical-flow", default=5, type=int, help="Number of frames of optical flow to provide the temporal stream")
+parser.add_argument("--activity-duration", default=72, type=int, help="Threshold at which a stream of activity is considered a valid sample")
 parser.add_argument(
     "--spatial-dropout", default=0.5, type=float, help="Spatial dropout probability"
 )
@@ -96,9 +100,9 @@ def main(args):
     # TODO: Mean flow subtraction
     train_dataset = GreatApeDataset(
         mode="train",
-        sample_interval=10,
-        no_of_optical_flow=5,
-        activity_duration_threshold=72,
+        sample_interval=args.sample_interval,
+        no_of_optical_flow=args.optical_flow,
+        activity_duration_threshold=args.activity_duration,
         video_names=f"{args.dataset_root}/splits/trainingdata.txt",
         classes=classes,
         frame_dir=f"{args.dataset_root}/frames",
@@ -119,14 +123,14 @@ def main(args):
         ),
     )
     train_loader = DataLoader(
-        train_dataset, batch_size=2, shuffle=False, num_workers=args.worker_count
+        train_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.worker_count
     )
     
     test_dataset = GreatApeDataset(
         mode="validation",
-        sample_interval=10,
-        no_of_optical_flow=5,
-        activity_duration_threshold=72,
+        sample_interval=args.sample_interval,
+        no_of_optical_flow=args.optical_flow,
+        activity_duration_threshold=args.activity_duration,
         video_names=f"{args.dataset_root}/splits/validationdata.txt",
         classes=classes,
         frame_dir=f"{args.dataset_root}/frames",
@@ -147,7 +151,7 @@ def main(args):
         ),
     )
     test_loader = DataLoader(
-        test_dataset, batch_size=2, shuffle=False, num_workers=args.worker_count
+        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.worker_count
     )
 
     # Initialise CNNs for spatial and temporal streams

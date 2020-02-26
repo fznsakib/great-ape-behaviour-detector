@@ -54,7 +54,6 @@ class Trainer:
             for i, (spatial_data, temporal_data, labels) in enumerate(
                 self.train_loader
             ):
-                print(spatial_data.shape)
                 # Set gradients to zero
                 self.spatial.optimiser.zero_grad()
                 self.temporal.optimiser.zero_grad()
