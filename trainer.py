@@ -83,7 +83,7 @@ class Trainer:
                 with torch.no_grad():
                     fusion_logits = average_fusion(spatial_logits, temporal_logits)
                     predictions = fusion_logits.argmax(-1)
-                    accuracy = compute_accuracy(labels, predictions)
+                    accuracy = compute_accuracy(list(labels), list(predictions))
 
                 data_load_time = data_load_end_time - data_load_start_time
                 step_time = time.time() - data_load_end_time
@@ -122,7 +122,8 @@ class Trainer:
                     self.save_model(validated_accuracy)
 
                 # Switch back to train mode after validation
-                self.model.model.train()
+                self.spatial.model.train()
+                self.temporal.model.train()
 
     def print_metrics(
         self,
@@ -173,7 +174,7 @@ class Trainer:
         )
 
     def validate(self):
-        results = {"predictions": [], "labels": []}
+        results = {"labels": [], "predictions": []}
         total_spatial_loss = 0
         total_temporal_loss = 0
 
@@ -202,15 +203,15 @@ class Trainer:
 
                 # Accumulate predictions against ground truth labels
                 fusion_logits = average_fusion(spatial_logits, temporal_logits)
-                predictions = fusion_logits.argmax(dim=-1).cpu().numpy()
+                predictions = fusion_logits.argmax(-1)
+                results["labels"].extend(list(labels))
                 results["predictions"].extend(list(predictions))
-                results["labels"].extend(list(labels.cpu().numpy()))
 
         # Get accuracy by checking for correct predictions across all predictions
-        accuracy = compute_accuracy()
+        accuracy = compute_accuracy(results["labels"], results["predictions"])
 
         # Get per class accuracies and sort by label value (0...9)
-        compute_class_accuracy()
+        per_class_accuracy = compute_class_accuracy()
 
         # Get average loss for each stream
         average_spatial_loss = total_spatial_loss / len(self.test_loader)
@@ -228,6 +229,6 @@ class Trainer:
             f"avg spatial loss: {average_spatial_loss:.5f}, "
             f"avg temporal loss: {average_temporal_loss:.5f}, "
             f"accuracy: {accuracy * 100:2.2f}\n"
-            f"per class accuracies: {per_class_accuracies}"
+            f"per class accuracy: {per_class_accuracy}"
         )
         return accuracy

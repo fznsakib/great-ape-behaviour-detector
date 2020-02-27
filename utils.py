@@ -17,10 +17,14 @@ def average_fusion(spatial_logits, temporal_logits):
 
 # Compute the top1 accuracy of predictions made by the network
 def compute_accuracy(labels, predictions):
-    labels = labels.cpu()
-    predictions = torch.from_numpy(predictions)
     assert len(labels) == len(predictions)
-    return float((labels == predictions).sum()) / len(labels)
+    
+    correct_predictions = 0
+    for i, prediction in enumerate(predictions):
+        if prediction == labels[i]:
+            correct_predictions += 1
+
+    return float(correct_predictions) / len(predictions)
 
 def compute_class_accuracy():
     return 0
