@@ -24,6 +24,13 @@ def get_ape_by_id(annotations_dir, video, frame_no, ape_id):
             ape = ape_element
     
     return ape
+
+"""
+Get activity of ape from ape XML element
+"""
+def get_activity(ape):
+    activity = ape.find('activity').text
+    return activity
             
 """
 Get number of apes present across a given video.

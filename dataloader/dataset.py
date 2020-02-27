@@ -184,6 +184,19 @@ class GreatApeDataset(torch.utils.data.Dataset):
                         # If this sample meets the required numnber of frames, break it down into smaller samples with the given interval
                         last_valid_frame = frame_no + valid_frames
                         for valid_frame_no in range(frame_no, last_valid_frame, self.sample_interval):
+
+                            # For the last valid sample, ensure that there are enough temporal frames with the ape following it
+                            if (valid_frame_no + self.sample_interval) >= last_valid_frame:
+                                correct_activity = False
+                                for temporal_frame in range(valid_frame_no, self.no_of_optical_flow):
+                                    ape = get_ape_by_id(self.annotations_dir, video, temporal_frame, current_ape_id)
+                                    ape_activity = get_activity(ape)
+                                    if (not ape) or (ape_activity != current_activity) or (temporal_frame > no_of_frames):
+                                        correct_activity = False
+                                        break
+                                if correct_activity == False:
+                                    break
+
                             # Check if there are enough frames left
                             if (no_of_frames - valid_frame_no) >= self.no_of_optical_flow:
 
