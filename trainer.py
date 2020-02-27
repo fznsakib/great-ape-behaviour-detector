@@ -1,10 +1,11 @@
+import time
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-import time
 from pathlib import Path
 from utils import *
+from tqdm import tqdm
 
 class Trainer:
     def __init__(
@@ -38,6 +39,7 @@ class Trainer:
         log_frequency: int = 5,
         start_epoch: int = 0,
     ):
+        print('==> Training')
 
         # Activate training mode
         self.spatial.model.train()
@@ -51,7 +53,7 @@ class Trainer:
             data_load_start_time = time.time()
 
             for i, (spatial_data, temporal_data, labels) in enumerate(
-                self.train_loader
+                self.train_loader 
             ):
                 # Set gradients to zero
                 self.spatial.optimiser.zero_grad()
@@ -174,6 +176,9 @@ class Trainer:
         )
 
     def validate(self):
+
+        print('==> Validation')
+
         results = {"labels": [], "predictions": []}
         total_spatial_loss = 0
         total_temporal_loss = 0
@@ -186,8 +191,9 @@ class Trainer:
         # No need to track gradients for validation, we're not optimizing.
         with torch.no_grad():
             for i, (spatial_data, temporal_data, labels) in enumerate(
-                self.test_loader
+                tqdm(self.test_loader, desc='Validation', leave=False, unit='batch') 
             ):
+
                 spatial_data = spatial_data.to(self.device)
                 temporal_data = temporal_data.to(self.device)
                 labels = labels.to(self.device)
@@ -224,11 +230,11 @@ class Trainer:
         self.summary_writer.add_scalars("average_spatial_loss", {"validation": average_spatial_loss}, self.step)
         self.summary_writer.add_scalars("average_temporal_loss", {"validation": average_temporal_loss}, self.step)
 
+        print('==> Results')
         print(
-            f"Validation results:\n"
-            f"avg spatial loss: {average_spatial_loss:.5f}, "
-            f"avg temporal loss: {average_temporal_loss:.5f}, "
-            f"accuracy: {accuracy * 100:2.2f}\n"
-            f"per class accuracy: {per_class_accuracy}"
+            f"Average spatial loss: {average_spatial_loss:.5f}\n"
+            f"Average temporal loss: {average_temporal_loss:.5f}\n"
+            f"Accuracy: {accuracy * 100:2.2f}\n"
+            f"Per class accuracy: {per_class_accuracy}"
         )
         return accuracy

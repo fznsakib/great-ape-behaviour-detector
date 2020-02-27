@@ -2,15 +2,15 @@ from __future__ import print_function, division
 import os
 import torch
 import pandas as pd
-from skimage import io, transform
 import numpy as np
 import matplotlib.pyplot as plt
-from torchvision.utils import save_image
-from torchvision import transforms
-from PIL import Image
-import glob
-import tqdm
 import json
+import glob
+from torchvision import transforms
+from torchvision.utils import save_image
+from PIL import Image
+from tqdm import tqdm
+from skimage import io, transform
 from dataloader.data_utils import *
 
 
@@ -140,7 +140,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                 return
 
         # Go through every video in dataset
-        for video in tqdm.tqdm(self.video_names):
+        for video in tqdm(self.video_names, desc=f'Initialising {self.mode} dataset'):
             # Count how many apes are present in the video
             no_of_apes = get_no_of_apes(self.annotations_dir, video)
 

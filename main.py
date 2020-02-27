@@ -171,6 +171,7 @@ def main(args):
     )
 
     # Begin training
+    print('==> Begin training')
     cnn_trainer.train(
         epochs=args.epochs,
         val_frequency=args.val_frequency,
