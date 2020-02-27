@@ -120,7 +120,7 @@ class Trainer:
 
                 # Save every args.checkpoint_frequency or if this is the last epoch
                 # TODO: Save network when highest accuracy is reached
-                if (epoch + 1) % self.checkpoint_frequency or (epoch + 1) == epochs:
+                if ((epoch + 1) % self.checkpoint_frequency == 0) or (epoch + 1) == epochs:
                     self.save_model(validated_accuracy)
 
                 # Switch back to train mode after validation
@@ -172,7 +172,10 @@ class Trainer:
     def save_model(self, accuracy):
         print(f"Saving model to {self.save_path} with accuracy of {accuracy*100:2.2f}")
         torch.save(
-            {"model": self.model.state_dict(), "accuracy": accuracy}, self.save_path
+            {"model": self.spatial.model.state_dict(), "accuracy": accuracy}, self.save_path
+        )
+        torch.save(
+            {"model": self.temporal.model.state_dict(), "accuracy": accuracy}, self.save_path
         )
 
     def validate(self):

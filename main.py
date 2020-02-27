@@ -63,7 +63,7 @@ parser.add_argument(
     "--epochs", default=50, type=int, help="Number of epochs to train the network for"
 )
 parser.add_argument(
-    "--checkpoint-frequency", type=int, default=1, help="Save a checkpoint every N epochs"
+    "--checkpoint-frequency", type=int, default=10, help="Save a checkpoint every N epochs"
 )
 parser.add_argument(
     "--val-frequency", type=int, default=1, help="Test the model on validation data every N epochs"
