@@ -4,8 +4,9 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from pathlib import Path
-from utils import *
 from tqdm import tqdm
+from tabulate import tabulate
+from utils import *
 
 class Trainer:
     def __init__(
@@ -39,7 +40,7 @@ class Trainer:
         log_frequency: int = 5,
         start_epoch: int = 0,
     ):
-        print('==> Training')
+        print('==> Training Stage')
 
         # Activate training mode
         self.spatial.model.train()
@@ -121,7 +122,7 @@ class Trainer:
                 # Save every args.checkpoint_frequency or if this is the last epoch
                 # TODO: Save network when highest accuracy is reached
                 if ((epoch + 1) % self.checkpoint_frequency == 0) or (epoch + 1) == epochs:
-                    self.save_model(validated_accuracy)
+                    self.save_model(validated_accuracy, epoch)
 
                 # Switch back to train mode after validation
                 self.spatial.model.train()
@@ -169,18 +170,18 @@ class Trainer:
         self.summary_writer.add_scalar("time/data", data_load_time, self.step)
         self.summary_writer.add_scalar("time/data", step_time, self.step)
 
-    def save_model(self, accuracy):
+    def save_model(self, accuracy, epoch):
         print(f"Saving model to {self.save_path} with accuracy of {accuracy*100:2.2f}")
         torch.save(
-            {"model": self.spatial.model.state_dict(), "accuracy": accuracy}, self.save_path
+            {"model": self.spatial.model.state_dict(), "accuracy": accuracy}, f'{self.save_path}/spatial_{args.epoch}'
         )
         torch.save(
-            {"model": self.temporal.model.state_dict(), "accuracy": accuracy}, self.save_path
+            {"model": self.temporal.model.state_dict(), "accuracy": accuracy}, f'{self.save_path}/temporal_{args.epoch}'
         )
 
     def validate(self):
 
-        print('==> Validation')
+        print('==> Validation Stage')
 
         results = {"labels": [], "predictions": []}
         total_spatial_loss = 0
@@ -234,10 +235,20 @@ class Trainer:
         self.summary_writer.add_scalars("average_temporal_loss", {"validation": average_temporal_loss}, self.step)
 
         print('==> Results')
-        print(
-            f"Average spatial loss: {average_spatial_loss:.5f}\n"
-            f"Average temporal loss: {average_temporal_loss:.5f}\n"
-            f"Accuracy: {accuracy * 100:2.2f}\n"
-            f"Per class accuracy: {per_class_accuracy}"
-        )
+        validation_results = [
+            ['Average Spatial Loss:', f'{average_spatial_loss:.5f}'],
+            ['Average Temporal Loss:', f'{average_temporal_loss:.5f}'],
+            ['Accuracy:', f'{accuracy * 100:2.2f}']
+        ]
+
+        print(tabulate(validation_results, tablefmt="fancy_grid"))
+
+        # TODO: print per class accuracy in separate table
+        # print(
+        #     f"Average spatial loss: {average_spatial_loss:.5f}\n"
+        #     f"Average temporal loss: {average_temporal_loss:.5f}\n"
+        #     f"Accuracy: {accuracy * 100:2.2f}\n"
+        #     f"Per class accuracy: {per_class_accuracy}"
+        # )
+
         return accuracy

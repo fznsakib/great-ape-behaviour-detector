@@ -11,6 +11,7 @@ from multiprocessing import cpu_count
 from torchvision import transforms, utils
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from tabulate import tabulate
 from pathlib import Path
 
 """""" """""" """""" """""" """""" """""" """""" """
@@ -44,35 +45,53 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument("--dataset-root", default=default_dataset_dir)
-parser.add_argument("--classes", default=f'mini_dataset/classes.txt')
+parser.add_argument("--classes", default=f"mini_dataset/classes.txt")
 parser.add_argument("--log-dir", default=Path("logs"), type=Path)
-parser.add_argument("--learning-rate", default=0.001, type=float, help="Learning rate")
-parser.add_argument("--sgd-momentum", default=0.9, type=float, help="SGD momentum")
+parser.add_argument(
+    "--learning-rate", default=0.001, type=float, help="Learning rate",
+)
+parser.add_argument(
+    "--sgd-momentum", default=0.9, type=float, help="SGD momentum",
+)
 parser.add_argument("--batch-size", default=32, type=int, help="Batch size")
-parser.add_argument("--checkpoint-path", default=Path("/checkpoints"), type=Path)
-parser.add_argument("--sample-interval", default=10, type=int, help="Frame interval at which samples are taken")
-parser.add_argument("--optical-flow", default=5, type=int, help="Number of frames of optical flow to provide the temporal stream")
-parser.add_argument("--activity-duration", default=72, type=int, help="Threshold at which a stream of activity is considered a valid sample")
 parser.add_argument(
-    "--spatial-dropout", default=0.5, type=float, help="Spatial dropout probability"
+    "--checkpoint-path", default=Path("checkpoints/"), type=Path,
 )
 parser.add_argument(
-    "--temporal-dropout", default=0.5, type=float, help="Temporal dropout probability"
+    "--sample-interval", default=10, type=int, help="Frame interval at which samples are taken",
 )
 parser.add_argument(
-    "--epochs", default=50, type=int, help="Number of epochs to train the network for"
+    "--optical-flow",
+    default=5,
+    type=int,
+    help="Number of frames of optical flow to provide the temporal stream",
 )
 parser.add_argument(
-    "--checkpoint-frequency", type=int, default=10, help="Save a checkpoint every N epochs"
+    "--activity-duration",
+    default=72,
+    type=int,
+    help="Threshold at which a stream of activity is considered a valid sample",
 )
 parser.add_argument(
-    "--val-frequency", type=int, default=1, help="Test the model on validation data every N epochs"
+    "--spatial-dropout", default=0.5, type=float, help="Spatial dropout probability",
 )
 parser.add_argument(
-    "--print-frequency", type=int, default=1, help="Print model metrics every N epochs"
+    "--temporal-dropout", default=0.5, type=float, help="Temporal dropout probability",
 )
 parser.add_argument(
-    "--log-frequency", type=int, default=1, help="Log to metrics Tensorboard every N epochs"
+    "--epochs", default=50, type=int, help="Number of epochs to train the network for",
+)
+parser.add_argument(
+    "--checkpoint-frequency", type=int, default=10, help="Save a checkpoint every N epochs",
+)
+parser.add_argument(
+    "--val-frequency", type=int, default=1, help="Test the model on validation data every N epochs",
+)
+parser.add_argument(
+    "--print-frequency", type=int, default=1, help="Print model metrics every N epochs",
+)
+parser.add_argument(
+    "--log-frequency", type=int, default=1, help="Log to metrics Tensorboard every N epochs",
 )
 parser.add_argument(
     "-j",
@@ -90,7 +109,9 @@ Main
 def main(args):
 
     classes = open(args.classes).read().strip().split()
-    
+
+    print("==> Initialising training dataset")
+
     # TODO: Mean flow subtraction
     train_dataset = GreatApeDataset(
         mode="train",
@@ -105,7 +126,7 @@ def main(args):
             [
                 transforms.Resize((224, 224)),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
             ]
         ),
         temporal_transform=transforms.Compose(
@@ -117,9 +138,11 @@ def main(args):
         ),
     )
     train_loader = DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.worker_count
+        train_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.worker_count,
     )
-    
+
+    print("==> Initialising validation dataset")
+
     test_dataset = GreatApeDataset(
         mode="validation",
         sample_interval=args.sample_interval,
@@ -133,7 +156,7 @@ def main(args):
             [
                 transforms.Resize((224, 224)),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
             ]
         ),
         temporal_transform=transforms.Compose(
@@ -145,8 +168,25 @@ def main(args):
         ),
     )
     test_loader = DataLoader(
-        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.worker_count
+        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.worker_count,
     )
+
+    """
+    Print dataset properties
+    """
+    dataset_argument_table = [
+        ["Sample Interval", args.sample_interval],
+        ["Temporal Stack Size", args.optical_flow],
+        ["Activity Duration Threshold", args.activity_duration,],
+    ]
+
+    dataset_table = [
+        ['Train', train_dataset.__len__()],
+        ['Validation', test_dataset.__len__()]
+    ]
+
+    print(tabulate(dataset_argument_table, headers=["Parameter", "Value"], tablefmt="fancy_grid"))
+    print(tabulate(dataset_table, headers=["Dataset Type", "Number of Samples"], tablefmt="fancy_grid"))
 
     # Initialise CNNs for spatial and temporal streams
     spatial_model = spatial.CNN(num_classes=len(classes), device=DEVICE)
@@ -171,7 +211,7 @@ def main(args):
     )
 
     # Begin training
-    print('==> Begin training')
+    print("==> Begin training")
     cnn_trainer.train(
         epochs=args.epochs,
         val_frequency=args.val_frequency,
@@ -184,7 +224,8 @@ def main(args):
 LOGGING FUNCTIONS
 """ """""" """""" """""" """""" """""" """""" """"""
 
-def get_summary_writer_log_dir(args: argparse.Namespace) -> str:
+
+def get_summary_writer_log_dir(args: argparse.Namespace,) -> str:
     """Get a unique directory that hasn't been logged to before for use with a TB
     SummaryWriter.
 
