@@ -2,6 +2,7 @@ import torch.nn as nn
 import torchvision.models as models
 import torch.optim as optim
 
+import network
 from utils import *
 
 class CNN():
@@ -9,15 +10,13 @@ class CNN():
         super().__init__()
 
         print ('==> Initialising spatial CNN model')
-        self.model = models.vgg16(pretrained=True, progress=True)
-        
-        # Reshape the outputs of the last FC layer for 9 classes
-        in_features = self.model.classifier[6].in_features
-        self.model.classifier[6] = nn.Linear(in_features, num_classes)
+        # self.model = models.vgg16(pretrained=True, progress=True)        
+        self.model = network.resnet152(pretrained=True, num_classes=num_classes, channels=3)
         
         # Send the model to GPU
         self.model = self.model.to(device)
             
         self.criterion = nn.CrossEntropyLoss()
+        # change to adam maybe?
         self.optimiser = optim.SGD(self.model.parameters(), lr=0.001, momentum=0.9)
         # self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', patience=1,verbose=True)
