@@ -1,11 +1,6 @@
 import numpy as np
 import torch
 from typing import NamedTuple
-
-class ImageShape(NamedTuple):
-    height: int
-    width: int
-    channels: int
     
 # Compute the fusion logits across the spatial and temporal stream to perform average fusion
 def average_fusion(spatial_logits, temporal_logits):
@@ -25,6 +20,24 @@ def compute_accuracy(labels, predictions):
             correct_predictions += 1
 
     return float(correct_predictions) / len(predictions)
+
+def compute_topk_accuracy(output, target, topk=(1,)):
+    """Computes the precision@k for the specified values of k"""
+    maxk = max(topk)
+    batch_size = target.size(0)
+
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t().cpu()
+    target = target.cpu()
+    correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+    res = []
+    for k in topk:
+        correct_k = correct[:k].view(-1).float().sum(0)
+        res.append(correct_k.mul_(100.0 / batch_size))
+    return res
+
+
 
 def compute_class_accuracy():
     return 0

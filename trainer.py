@@ -85,8 +85,7 @@ class Trainer:
                 # Compute accuracy
                 with torch.no_grad():
                     fusion_logits = average_fusion(spatial_logits, temporal_logits)
-                    predictions = fusion_logits.argmax(-1)
-                    accuracy = compute_accuracy(list(labels), list(predictions))
+                    top1, top3 = compute_topk_accuracy(torch.from_numpy(fusion_logits), labels, topk=(1, 3))
 
                 data_load_time = data_load_end_time - data_load_start_time
                 step_time = time.time() - data_load_end_time
@@ -94,7 +93,8 @@ class Trainer:
                 if ((self.step + 1) % log_frequency) == 0:
                     self.log_metrics(
                         epoch,
-                        accuracy,
+                        top1,
+                        top3,
                         spatial_loss,
                         temporal_loss,
                         data_load_time,
@@ -103,7 +103,8 @@ class Trainer:
                 if ((self.step + 1) % print_frequency) == 0:
                     self.print_metrics(
                         epoch,
-                        accuracy,
+                        top1,
+                        top3,
                         spatial_loss,
                         temporal_loss,
                         data_load_time,
@@ -131,7 +132,8 @@ class Trainer:
     def print_metrics(
         self,
         epoch,
-        accuracy,
+        top1,
+        top3,
         spatial_loss,
         temporal_loss,
         data_load_time,
@@ -143,7 +145,8 @@ class Trainer:
             f"step: [{epoch_step}/{len(self.train_loader)}], "
             f"spatial batch loss: {spatial_loss:.5f}, "
             f"temporal batch loss: {temporal_loss:.5f}, "
-            f"accuracy: {accuracy * 100:2.2f}, "
+            f"top1 accuracy: {top1.item():2.2f}, "
+            f"top3 accuracy: {top3.item():2.2f}, "
             f"data load time: {data_load_time:.5f}, "
             f"step time: {step_time:.5f}"
         )
@@ -151,7 +154,8 @@ class Trainer:
     def log_metrics(
         self,
         epoch,
-        accuracy,
+        top1,
+        top3,
         spatial_loss,
         temporal_loss,
         data_load_time,
@@ -159,7 +163,10 @@ class Trainer:
     ):
         self.summary_writer.add_scalar("epoch", epoch, self.step)
         self.summary_writer.add_scalars(
-            "accuracy", {"train": accuracy}, self.step
+            "top1_accuracy", {"train": top1.item()}, self.step
+        )
+        self.summary_writer.add_scalars(
+            "top3_accuracy", {"train": top3.item()}, self.step
         )
         self.summary_writer.add_scalars(
             "spatial_loss", {"train": float(spatial_loss.item())}, self.step
@@ -170,13 +177,13 @@ class Trainer:
         self.summary_writer.add_scalar("time/data", data_load_time, self.step)
         self.summary_writer.add_scalar("time/data", step_time, self.step)
 
-    def save_model(self, accuracy, epoch):
-        print(f"Saving model to {self.save_path} with accuracy of {accuracy*100:2.2f}")
+    def save_model(self, top1, epoch):
+        print(f"Saving model to {self.save_path} with accuracy of {top1.item():2.2f}")
         torch.save(
-            {"model": self.spatial.model.state_dict(), "accuracy": accuracy}, f'{self.save_path}/spatial_{args.epoch}'
+            {"model": self.spatial.model.state_dict(), "accuracy": top1.item()}, f'{self.save_path}/spatial_{args.epoch}'
         )
         torch.save(
-            {"model": self.temporal.model.state_dict(), "accuracy": accuracy}, f'{self.save_path}/temporal_{args.epoch}'
+            {"model": self.temporal.model.state_dict(), "accuracy": top1.item()}, f'{self.save_path}/temporal_{args.epoch}'
         )
 
     def validate(self):
@@ -213,12 +220,9 @@ class Trainer:
 
                 # Accumulate predictions against ground truth labels
                 fusion_logits = average_fusion(spatial_logits, temporal_logits)
-                predictions = fusion_logits.argmax(-1)
-                results["labels"].extend(list(labels))
-                results["predictions"].extend(list(predictions))
 
         # Get accuracy by checking for correct predictions across all predictions
-        accuracy = compute_accuracy(results["labels"], results["predictions"])
+        top1, top3 = compute_topk_accuracy(torch.from_numpy(fusion_logits), labels, topk=(1, 3))
 
         # Get per class accuracies and sort by label value (0...9)
         per_class_accuracy = compute_class_accuracy()
@@ -229,7 +233,10 @@ class Trainer:
 
         # Log metrics
         self.summary_writer.add_scalars(
-            "accuracy", {"validation": accuracy}, self.step
+            "top1_accuracy", {"validation": top1.item()}, self.step
+        )
+        self.summary_writer.add_scalars(
+            "top3_accuracy", {"validation": top3.item()}, self.step
         )
         self.summary_writer.add_scalars("average_spatial_loss", {"validation": average_spatial_loss}, self.step)
         self.summary_writer.add_scalars("average_temporal_loss", {"validation": average_temporal_loss}, self.step)
@@ -238,17 +245,12 @@ class Trainer:
         validation_results = [
             ['Average Spatial Loss:', f'{average_spatial_loss:.5f}'],
             ['Average Temporal Loss:', f'{average_temporal_loss:.5f}'],
-            ['Accuracy:', f'{accuracy * 100:2.2f}']
+            ['Top1 Accuracy:', f'{top1.item()}'],
+            ['Top3 Accuracy:', f'{top3.item()}'],
         ]
 
         print(tabulate(validation_results, tablefmt="fancy_grid"))
 
         # TODO: print per class accuracy in separate table
-        # print(
-        #     f"Average spatial loss: {average_spatial_loss:.5f}\n"
-        #     f"Average temporal loss: {average_temporal_loss:.5f}\n"
-        #     f"Accuracy: {accuracy * 100:2.2f}\n"
-        #     f"Per class accuracy: {per_class_accuracy}"
-        # )
 
-        return accuracy
+        return top1
