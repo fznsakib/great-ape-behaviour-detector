@@ -4,14 +4,15 @@ import cv2
 import numpy as np
 import math
 import glob
+from tqdm import tqdm
 from xml.dom import minidom
 
 
 # Draw bounding boxes on individual frames
 def get_frames_with_boxes(videos):
-    for i, video in enumerate(videos):
+    for i, video in enumerate(tqdm(videos)):
         frame_file_path = f'../dataset/frames/{video}'
-        print(f'Drawing boxes for video no {i}: {video}.mp4')
+        # print(f'Drawing boxes for video no {i}: {video}.mp4')
         
         for i in range(1, 361):
             xml_file_path = f'../dataset/behaviour_annotations/{video}/{video}_frame_{str(i)}.xml'
@@ -23,7 +24,7 @@ def get_frames_with_boxes(videos):
             xmldoc = minidom.parse(xml_file_path)
             boxes = xmldoc.getElementsByTagName('bndbox')
             
-            image_file_path = f'{frame_file_path}/{video}_frame_{str(i)}.jpg'
+            image_file_path = f'{frame_file_path}/{video}_frame_{i}.jpg'
             image = cv2.imread(image_file_path)
                 
             # Get coordinates
@@ -52,13 +53,13 @@ def get_frames_with_boxes(videos):
 
 # Get all frames with bounding box and stitch into video
 def stitch_to_video(videos):
-    for i, video in enumerate(videos):
+    for i, video in enumerate(tqdm(videos)):
         img_array = []
     
         files = sorted(glob.glob(f'../dataset/frames/{video}/*.jpg'))
         no_of_files = len(files)
         
-        print(f'Stitching frames for video no {i}: {video}.mp4')
+        # print(f'Stitching frames for video no {i}: {video}.mp4')
         
         for i in range(1, no_of_files + 1):
             filename = f'../dataset/frames/{video}/{video}_frame_{i}.jpg'
