@@ -3,8 +3,9 @@ import numpy as np
 import tqdm
 import os
 import sys
+import shutil
 
-frames_path = f'../mini_dataset/frames'
+frames_path = f'../../scratch/dataset/frames'
 data_list_path = sys.argv[1]
 video_names = open(data_list_path).read().strip().split()
 
@@ -14,11 +15,11 @@ for video in tqdm.tqdm(video_names):
         frame_2_path = f'{frames_path}/rgb/{video}/{video}_frame_{frame + 1}.jpg'
         
         if not os.path.exists(frame_2_path):
-            print(f'Reached the final frame available of video {video}!')
+            # print(f'Reached the final frame available of video {video}!')
             continue
             
         if not os.path.exists(frames_path):
-            print(f'Frame {frame} does not exist for video {video}')
+            # print(f'Frame {frame} does not exist for video {video}')
             continue
         
         frame_1 = cv2.imread(frame_1_path)
@@ -44,3 +45,9 @@ for video in tqdm.tqdm(video_names):
 
         cv2.imwrite(f'{horizontal_frame_path}/{video}_frame_{frame}.jpg', horz)
         cv2.imwrite(f'{vertical_frame_path}/{video}_frame_{frame}.jpg', vert)
+
+        frame_3_path = f'{frames_path}/rgb/{video}/{video}_frame_{frame + 2}.jpg'
+        if not os.path.exists(frame_3_path):
+            cv2.imwrite(f'{horizontal_frame_path}/{video}_frame_{frame + 1}.jpg', horz)
+            cv2.imwrite(f'{vertical_frame_path}/{video}_frame_{frame+ 1}.jpg', vert)
+
