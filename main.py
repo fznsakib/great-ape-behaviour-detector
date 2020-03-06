@@ -20,7 +20,7 @@ Custom Library Imports
 import spatial
 import temporal
 import trainer
-from dataloader.dataset import GreatApeDataset
+from dataset import GreatApeDataset
 from utils import *
 
 """""" """""" """""" """""" """""" """""" """""" """
@@ -218,8 +218,8 @@ def main(args):
 
     # If resuming, then load saved checkpoints
     if args.resume:
-        spatial_model.load_checkpoint(args.checkpoint_path)
-        temporal_model.load_checkpoint(args.checkpoint_path)
+        spatial_model.load_checkpoint(args.name, args.checkpoint_path)
+        temporal_model.load_checkpoint(args.name, args.checkpoint_path)
 
     # Initialise log writing
     log_dir = get_summary_writer_log_dir(args)

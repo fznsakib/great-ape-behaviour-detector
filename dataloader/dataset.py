@@ -11,7 +11,7 @@ from torchvision.utils import save_image
 from PIL import Image
 from tqdm import tqdm
 from skimage import io, transform
-from dataloader.data_utils import *
+from data_utils import *
 
 
 class GreatApeDataset(torch.utils.data.Dataset):

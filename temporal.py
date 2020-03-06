@@ -25,8 +25,8 @@ class CNN():
         self.optimiser = optim.SGD(self.model.parameters(), lr=self.lr, momentum=0.9)
         # self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', patience=1,verbose=True)
         
-    def load_checkpoint(self, checkpoint_path):
-        checkpoint_file_path = f'{checkpoint_path}/{self.name}/temporal'
+    def load_checkpoint(self, name, checkpoint_path):
+        checkpoint_file_path = f'{checkpoint_path}/{name}/temporal'
         
         if os.path.isfile(checkpoint_file_path):
             checkpoint = torch.load(checkpoint_file_path)
@@ -35,6 +35,6 @@ class CNN():
             self.start_epoch = checkpoint['epoch']
             self.accuracy = checkpoint['accuracy']
             
-            print(f'==> Loaded temporal model checkpoint {args.name} at epoch {self.start_epoch} with top1 accuracy {self.accuracy}')
+            print(f'==> Loaded temporal model checkpoint {name} at epoch {self.start_epoch} with top1 accuracy {self.accuracy}')
         else:
             print(f'==> No checkpoint at {checkpoint_file_path} -- Training model from scratch')
