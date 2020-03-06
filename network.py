@@ -151,37 +151,67 @@ class ResNet(nn.Module):
         out = self.fc_custom(x)
         return out
 
+# Transform the original 3 channel weight to the number channels requested
 def cross_modality_pretrain(conv1_weight, channels):
-    # transform the original 3 channel weight to "channel" channel
+    # Accumulate conv1 weights across the 3 channels
     S=0
     for i in range(3):
         S += conv1_weight[:,i,:,:]
+
+    # Get average of weights
     avg = S/3.
     new_conv1_weight = torch.FloatTensor(64,channels,7,7)
-    #print type(avg),type(new_conv1_weight)
+    
+    # Assign average weight to each of the channels in conv1
     for i in range(channels):
         new_conv1_weight[:,i,:,:] = avg.data
+    
     return new_conv1_weight
 
+# Adapt pretrained weights of conv1 to created model according to number of channels
 def weight_transform(model_dict, pretrain_dict, channels):
     weight_dict  = {k:v for k, v in pretrain_dict.items() if k in model_dict}
-    #print pretrain_dict.keys()
     w3 = pretrain_dict['conv1.weight']
-    #print type(w3)
+
     if channels == 3:
         wt = w3
     else:
         wt = cross_modality_pretrain(w3,channels)
 
+    # Assign pretrained weights to model
     weight_dict['conv1_custom.weight'] = wt
     model_dict.update(weight_dict)
     return model_dict
+
+def resnet18(pretrained, num_classes, channels):
+    """Constructs a ResNet-18 model.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNet(BasicBlock, [2, 2, 2, 2], num_classes=num_classes, channels=channels)
+    if pretrained:
+       pretrain_dict = model_zoo.load_url(model_urls['resnet18'])
+       model_dict = model.state_dict()
+       model_dict=weight_transform(model_dict, pretrain_dict, channels)
+       model.load_state_dict(model_dict)
+    return model
+
+
+def resnet50(pretrained, num_classes, channels):
+
+    model = ResNet(Bottleneck, [3, 4, 6, 3], num_classes=num_classes, channels=channels)
+    if pretrained:
+       pretrain_dict = model_zoo.load_url(model_urls['resnet50'])
+       model_dict = model.state_dict()
+       model_dict=weight_transform(model_dict, pretrain_dict, channels)
+       model.load_state_dict(model_dict)
+    return model
 
 def resnet152(pretrained, num_classes, channels):
 
     model = ResNet(Bottleneck, [3, 8, 36, 3], num_classes, channels)
     if pretrained:
-        pretrain_dict = model_zoo.load_url(model_urls['resnet152'])                  # modify pretrain code
+        pretrain_dict = model_zoo.load_url(model_urls['resnet152'])
         model_dict = model.state_dict()
         model_dict=weight_transform(model_dict, pretrain_dict, channels)
         model.load_state_dict(model_dict)
