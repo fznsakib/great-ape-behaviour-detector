@@ -32,6 +32,7 @@ for i in range(start_frame, end_frame + 1):
     
     apes_to_merge = []
     
+    
     if len(root.findall('object')) == 1:
         print(f'Ape {ape_index_1} not found in frame {i}')
         continue
@@ -41,12 +42,12 @@ for i in range(start_frame, end_frame + 1):
     ape_box_0 = ape_0[2]
     ape_box_1 = ape_1[2]
     
-    activity = ''
-    # Get either ape's activity for insertion
-    for j, ape in enumerate(root.findall('object')):
-        if ape_index_0 == j or ape_index_1 == j:
-            if len(ape.findall('activity')) != 0:
-               activity = ape.findall('activity')[0].text    
+    # activity = ''
+    # # Get either ape's activity for insertion
+    # for j, ape in enumerate(root.findall('object')):
+    #     if ape_index_0 == j or ape_index_1 == j:
+    #         if len(ape.findall('activity')) != 0:
+    #            activity = ape.findall('activity')[0].text    
     
     if mode == 'overlap':
         root.findall('object')[ape_index_0][2][0].text = str(round((float(ape_box_0[0].text) + float(ape_box_1[0].text))/2, 2))
@@ -66,7 +67,7 @@ for i in range(start_frame, end_frame + 1):
         if float(ape_box_1[3].text) > float(ape_box_0[3].text):
             root.findall('object')[ape_index_0][2][3].text = ape_box_1[3].text
     
-    root.findall('object')[ape_index_0].find('activity').text = activity
+    # root.findall('object')[ape_index_0].find('activity').text = activity
         
     root.remove(ape_1)
     

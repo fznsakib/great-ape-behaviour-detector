@@ -32,7 +32,26 @@ for i in range(start_frame, end_frame + 1):
     
     ape = root.findall('object')[ape_index][2]
     
-    root.findall('object')[ape_index][2][coordinate_index].text = str(round(float(ape[coordinate_index].text) * factor, 2))
+    new_coord = round((float(ape[coordinate_index].text)) * factor, 2)
+    
+    height = root.find('size')[0].text
+    width = root.find('size')[1].text
+    
+    if new_coord < 0:
+        new_coord = 0
+    
+    if coordinate_index == 2:
+        if new_coord > float(width):
+            new_coord = float(width)
+    
+    if coordinate_index == 3:
+        if new_coord > float(height):
+            new_coord = float(height)
+    
+    # new_coord = 95.00
+        
+    root.findall('object')[ape_index][2][coordinate_index].text = str(new_coord)
+    
     tree.write(xml_file_path)
                     
 

@@ -26,6 +26,10 @@ def convert(size, box):
 def convert_annotation(frame_no, image_id):
     
     in_file_path = f'../dataset/behaviour_annotations/{image_id}/{image_id}_frame_{frame_no}.xml'
+    if (not os.path.isfile(in_file_path)):
+        print(f'frame {frame_no} does not exist for video {image_id}')
+        return
+    
     in_file = open(in_file_path)
     
     out_file_path = f'../dataset/labels/{image_id}'
@@ -69,6 +73,7 @@ def convert_annotation(frame_no, image_id):
 
 video_names = [sys.argv[1]]
 # video_names = open(sys.argv[1]).read().strip().split()
+
 for i, video_id in enumerate(video_names):
     print(f'Converting training annotations of {video_id}.mp4 ({i}/{len(video_names)})')
     no_of_frames = len(os.listdir(f'../dataset/annotations/{video_id}'))

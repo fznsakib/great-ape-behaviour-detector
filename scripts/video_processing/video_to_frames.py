@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import os
 import sys
+from tqdm import tqdm
 
 if (len(sys.argv) != 2):
     print('error: Arguments should be in the form:\n')
@@ -10,7 +11,6 @@ if (len(sys.argv) != 2):
 data_list_path = sys.argv[1]
 
 # Get list of video names which need to be split
-# filenames = [line.rstrip('\n') for line in open(data_list_path)]
 # filenames = open(sys.argv[1]).read().strip().split()
 filenames = [sys.argv[1]]
 
@@ -20,8 +20,7 @@ try:
 except OSError:
     print ('Error: Creating directory of dataset/frames')
 
-for filename in filenames:
-    print(f'Capturing frames of video {filename}.mp4')
+for filename in tqdm(filenames):
     
     # Playing video from file:
     cap = cv2.VideoCapture(f'../dataset/videos/{filename}.mp4')
@@ -29,7 +28,7 @@ for filename in filenames:
     
     currentFrame = 1
 
-    while(currentFrame <= no_of_frames):
+    while(currentFrame < no_of_frames):
         
         # Capture frame-by-frame
         ret, frame = cap.read()
@@ -42,7 +41,7 @@ for filename in filenames:
 
         # Saves image of the current frame in jpg file
         name = f'../dataset/frames/{filename}/{filename}_frame_{currentFrame}.jpg'
-        print ('Creating...' + name)
+
         cv2.imwrite(name, frame)
 
         # To stop duplicate images
