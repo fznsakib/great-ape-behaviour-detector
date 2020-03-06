@@ -174,7 +174,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                             else:
                                 break
 
-                        # If less than 72 frames, carry on with search
+                        # If less frames than activity duration threshold, carry on with search
                         if valid_frames < self.activity_duration_threshold:
                             frame_no += valid_frames
                             continue
