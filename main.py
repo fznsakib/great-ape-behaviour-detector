@@ -38,8 +38,9 @@ else:
 Argument Parser
 """ """""" """""" """""" """""" """""" """""" """"""
 
-default_dataset_dir = f"{os.getcwd()}/dataset"
-default_classes_dir = f"{default_dataset_dir}/classes.txt"
+default_dataset_dir = Path(f"{os.getcwd()}/../scratch/dataset")
+default_classes_dir = Path(f"{default_dataset_dir}/classes.txt")
+default_checkpoints_dir = Path(f"{os.getcwd()}/../scratch/checkpoints")
 
 parser = argparse.ArgumentParser(
     description="A spatial & temporal-based two-stream convolutional neural network for recognising great ape behaviour.",
@@ -47,11 +48,18 @@ parser = argparse.ArgumentParser(
 )
 
 # Paths
-parser.add_argument("--dataset-path", default=Path("dataset"), type=Path, help="Path to root of dataset")
-parser.add_argument("--log-path", default=Path("logs"), type=Path, help="Path to where logs will be saved")
-parser.add_argument("--classes", default=Path("/dataset/classes.txt"), type=Path, help="Path to classes.txt")
 parser.add_argument(
-    "--checkpoint-path", default=Path("checkpoints"), type=Path, help="Path to root of saved model checkpoints"
+    "--dataset-path", default=default_dataset_dir, type=Path, help="Path to root of dataset"
+)
+parser.add_argument(
+    "--log-path", default=Path("logs"), type=Path, help="Path to where logs will be saved"
+)
+parser.add_argument("--classes", default=default_classes_dir, type=Path, help="Path to classes.txt")
+parser.add_argument(
+    "--checkpoint-path",
+    default=default_checkpoints_dir,
+    type=Path,
+    help="Path to root of saved model checkpoints",
 )
 
 # Hyperparameters
@@ -68,10 +76,7 @@ parser.add_argument(
 
 # Dataloader parameters
 parser.add_argument(
-    "--sample-interval",
-    default=10,
-    type=int,
-    help="Frame interval at which samples are taken",
+    "--sample-interval", default=10, type=int, help="Frame interval at which samples are taken",
 )
 parser.add_argument(
     "--optical-flow",
@@ -88,24 +93,20 @@ parser.add_argument(
 
 # Frequency values
 parser.add_argument(
-    "--val-frequency",
-    type=int,
-    default=1,
-    help="Test the model on validation data every N epochs",
+    "--val-frequency", type=int, default=1, help="Test the model on validation data every N epochs",
 )
 parser.add_argument(
-    "--log-frequency",
-    type=int,
-    default=1,
-    help="Log to metrics Tensorboard every N epochs",
+    "--log-frequency", type=int, default=1, help="Log to metrics Tensorboard every N epochs",
 )
 parser.add_argument(
     "--print-frequency", type=int, default=1, help="Print model metrics every N epochs",
 )
 
 # Miscellaneous
-parser.add_argument('--name', default='', type=str, help='Toggle model checkpointing by providing name')
-parser.add_argument('--resume', action='store_true', help='Load and resume model for training')
+parser.add_argument(
+    "--name", default="", type=str, help="Toggle model checkpointing by providing name"
+)
+parser.add_argument("--resume", action="store_true", help="Load and resume model for training")
 
 parser.add_argument(
     "-j",
@@ -121,7 +122,7 @@ Main
 
 
 def main(args):
-    
+
     classes = open(args.classes).read().strip().split()
 
     print("==> Initialising training dataset")
@@ -139,9 +140,7 @@ def main(args):
             [
                 transforms.Resize((224, 224)),
                 transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],
-                ),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
             ]
         ),
         temporal_transform=transforms.Compose(
@@ -153,10 +152,7 @@ def main(args):
         ),
     )
     train_loader = DataLoader(
-        train_dataset,
-        batch_size=args.batch_size,
-        shuffle=False,
-        num_workers=args.worker_count,
+        train_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.worker_count,
     )
 
     print("==> Initialising validation dataset")
@@ -174,9 +170,7 @@ def main(args):
             [
                 transforms.Resize((224, 224)),
                 transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],
-                ),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
             ]
         ),
         temporal_transform=transforms.Compose(
@@ -188,10 +182,7 @@ def main(args):
         ),
     )
     test_loader = DataLoader(
-        test_dataset,
-        batch_size=args.batch_size,
-        shuffle=False,
-        num_workers=args.worker_count,
+        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.worker_count,
     )
 
     print("==> Dataset properties")
@@ -207,25 +198,24 @@ def main(args):
         ["Validation", test_dataset.__len__()],
     ]
 
+    print(tabulate(dataset_argument_table, headers=["Parameter", "Value"], tablefmt="fancy_grid",))
     print(
         tabulate(
-            dataset_argument_table,
-            headers=["Parameter", "Value"],
-            tablefmt="fancy_grid",
-        )
-    )
-    print(
-        tabulate(
-            dataset_table,
-            headers=["Dataset Type", "Number of Samples"],
-            tablefmt="fancy_grid",
+            dataset_table, headers=["Dataset Type", "Number of Samples"], tablefmt="fancy_grid",
         )
     )
 
     # Initialise CNNs for spatial and temporal streams
-    spatial_model = spatial.CNN(lr=args.learning_rate, num_classes=len(classes), channels=3, device=DEVICE)
-    temporal_model = temporal.CNN(lr=args.learning_rate, num_classes=len(classes), channels=args.optical_flow * 2, device=DEVICE)
-    
+    spatial_model = spatial.CNN(
+        lr=args.learning_rate, num_classes=len(classes), channels=3, device=DEVICE
+    )
+    temporal_model = temporal.CNN(
+        lr=args.learning_rate,
+        num_classes=len(classes),
+        channels=args.optical_flow * 2,
+        device=DEVICE,
+    )
+
     # If resuming, then load saved checkpoints
     if args.resume:
         spatial_model.load_checkpoint(args.checkpoint_path)
@@ -281,7 +271,7 @@ def get_summary_writer_log_dir(args: argparse.Namespace,) -> str:
     tb_log_dir_prefix = f"{args.name}_run_"
     i = 0
     while i < 1000:
-        tb_log_dir = args.log_dir / (tb_log_dir_prefix + str(i))
+        tb_log_dir = args.log_path / (tb_log_dir_prefix + str(i))
         if not tb_log_dir.exists():
             return str(tb_log_dir)
         i += 1
