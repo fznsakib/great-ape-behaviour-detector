@@ -8,7 +8,7 @@ from tqdm import trange
 
 if (len(sys.argv) != 5):
     print('error: Arguments should be in the form:\n')
-    print('python behaviour_labeller.py [filename] [start frame] [end frame] [ape id]')
+    print('python behaviour_labeller.py [filename] [ape id] [start frame] [end frame]')
     exit()
 
 filename = sys.argv[1]
@@ -73,7 +73,7 @@ for i in range(start_frame + 1, end_frame):
     for ape in root.findall('object'):
         if int(ape.findall('id')[0].text) == ape_id:
             print(f'Ape {ape_id} already exists in frame {i}')
-            continue
+            exit()
     
     start_frame_ape.find('bndbox/xmin').text = str(coords[0])
     start_frame_ape.find('bndbox/ymin').text = str(coords[1])

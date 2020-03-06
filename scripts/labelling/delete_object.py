@@ -35,9 +35,6 @@ for i in range(start_frame, end_frame + 1):
                 continue
         if ape_index == i: 
             root.remove(ape_element)
-    
-    if len(root.findall('object')) == 0:
-        root.findall('is_object')[0].text = 'False'
                 
     tree.write(xml_file_path)
 

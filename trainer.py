@@ -1,66 +1,65 @@
+import time
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
-from torch.optim.optimizer import Optimizer
+from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from pathlib import Path
+from tqdm import tqdm
+from tabulate import tabulate
 from utils import *
+
 
 class Trainer:
     def __init__(
         self,
-        spatial_model: nn.Module,
-        temporal_model: nn.Module,
+        spatial: nn.Module,
+        temporal: nn.Module,
         train_loader: DataLoader,
         test_loader: DataLoader,
-        spatial_criterion: nn.Module,
-        temporal_criterion: nn.Module,
-        spatial_optimiser: Optimizer,
-        temporal_optimiser: Optimizer,
         summary_writer: SummaryWriter,
         device: torch.device,
-        checkpoint_frequency: int,
+        name: str,
         save_path: Path,
-        log_dir: str,
     ):
-        self.spatial_model = spatial_model.to(device)
-        self.temporal_model = temporal_model.to(device)
+        self.spatial = spatial
+        self.temporal = temporal
         self.train_loader = train_loader
         self.test_loader = test_loader
-        self.spatial_criterion = spatial_criterion
-        self.temporal_criterion = temporal_criterion
-        self.spatial_optimiser = spatial_optimiser
-        self.temporal_optimiser = temporal_optimiser
         self.summary_writer = summary_writer
         self.device = device
-        self.checkpoint_frequency = checkpoint_frequency
+        self.name = name
         self.save_path = save_path
-        self.log_dir = log_dir
         self.step = 0
+        self.best_accuracy = 0
+        self.validation_predictions = {}
 
     def train(
         self,
         epochs: int,
+        start_epoch: int,
         val_frequency: int,
         print_frequency: int = 20,
         log_frequency: int = 5,
-        start_epoch: int = 0,
     ):
+        print("==> Training Stage")
 
         # Activate training mode
-        self.spatial_model.train()
-        self.temporal_model.train()
+        self.spatial.model.train()
+        self.temporal.model.train()
 
         # Train for requested number of epochs
-        for epoch in range(start_epoch, epochs):
-            self.spatial_model.train()
-            self.temporal_model.train()
+        for epoch in range(start_epoch, start_epoch + epochs):
+            self.spatial.model.train()
+            self.temporal.model.train()
 
             data_load_start_time = time.time()
 
             for i, (spatial_data, temporal_data, labels) in enumerate(
                 self.train_loader
             ):
+                # Set gradients to zero
+                self.spatial.optimiser.zero_grad()
+                self.temporal.optimiser.zero_grad()
 
                 spatial_data = spatial_data.to(self.device)
                 temporal_data = temporal_data.to(self.device)
@@ -69,28 +68,27 @@ class Trainer:
                 data_load_end_time = time.time()
 
                 # Compute the forward pass of the model
-                spatial_logits = self.spatial_model.forward(spatial_data)
-                temporal_logits = self.temporal_model.forward(temporal_data)
+                spatial_logits = self.spatial.model(spatial_data)
+                temporal_logits = self.temporal.model(temporal_data)
 
-                # Compute the loss using self.criterion and store it
-                spatial_loss = self.spatial_criterion(spatial_logits, labels)
-                temporal_loss = self.temporal_criterion(temporal_logits, labels)
+                # Compute the loss using model criterion and store it
+                spatial_loss = self.spatial.criterion(spatial_logits, labels)
+                temporal_loss = self.temporal.criterion(temporal_logits, labels)
 
                 # Compute the backward pass
                 spatial_loss.backward()
                 temporal_loss.backward()
 
-                # Step the optimizer and then zero out the gradient buffers.
-                self.spatial_optimiser.step()
-                self.spatial_optimiser.zero_grad()
-                self.temporal_optimiser.step()
-                self.temporal_optimiser.zero_grad()
+                # Step the optimiser
+                self.spatial.optimiser.step()
+                self.temporal.optimiser.step()
 
                 # Compute accuracy
                 with torch.no_grad():
                     fusion_logits = average_fusion(spatial_logits, temporal_logits)
-                    predictions = fusion_logits.argmax(-1)
-                    accuracy = accuracy(labels, predictions)
+                    top1, top3 = compute_topk_accuracy(
+                        torch.from_numpy(fusion_logits), labels, topk=(1, 3)
+                    )
 
                 data_load_time = data_load_end_time - data_load_start_time
                 step_time = time.time() - data_load_end_time
@@ -98,7 +96,8 @@ class Trainer:
                 if ((self.step + 1) % log_frequency) == 0:
                     self.log_metrics(
                         epoch,
-                        accuracy,
+                        top1,
+                        top3,
                         spatial_loss,
                         temporal_loss,
                         data_load_time,
@@ -107,7 +106,8 @@ class Trainer:
                 if ((self.step + 1) % print_frequency) == 0:
                     self.print_metrics(
                         epoch,
-                        accuracy,
+                        top1,
+                        top3,
                         spatial_loss,
                         temporal_loss,
                         data_load_time,
@@ -121,24 +121,47 @@ class Trainer:
 
             # Go into validation mode if condition met
             if ((epoch + 1) % val_frequency) == 0:
-                validated_accuracy = self.validate()
-
-                # Save every args.checkpoint_frequency or if this is the last epoch
-                # TODO: Save network when highest accuracy is reached
-                if (epoch + 1) % self.checkpoint_frequency or (epoch + 1) == epochs:
-                    self.save_model(validated_accuracy)
+                validation_accuracy = self.validate()
 
                 # Switch back to train mode after validation
-                self.model.train()
+                self.spatial.model.train()
+                self.temporal.model.train()
+
+                # Checkpoint models if required
+                if self.name:
+                    is_best_model = validation_accuracy > self.best_accuracy
+
+                    # lr_scheduler
+                    # self.scheduler.step(val_loss)
+                    # save model
+                    if is_best_model:
+                        print(f'==> Best model found with top1 accuracy {validation_accuracy}')
+                        self.best_accuracy = validation_accuracy
+                        with open(f"output/{self.name}.pickle", "wb") as f:
+                            pickle.dump(self.validation_results, f)
+                        f.close()
+
+                    print(f'==> Saving model checkpoint with top1 accuracy {validation_accuracy}')
+                    save_checkpoint(
+                        {
+                            "state_dict": self.spatial.state_dict(),
+                            "optimiser": self.spatial.optimiser.state_dict(),
+                            "epoch": self.epoch,
+                            "accuracy": validation_accuracy,
+                        },
+                        {
+                            "state_dict": self.temporal.model.state_dict(),
+                            "optimiser": self.temporal.optimiser.state_dict(),
+                            "epoch": self.epoch,
+                            "accuracy": validation_accuracy,
+                        },
+                        is_best_model,
+                        self.name,
+                        self.save_path,
+                    )
 
     def print_metrics(
-        self,
-        epoch,
-        accuracy,
-        spatial_loss,
-        temporal_loss,
-        data_load_time,
-        step_time,
+        self, epoch, top1, top3, spatial_loss, temporal_loss, data_load_time, step_time,
     ):
         epoch_step = self.step % len(self.train_loader)
         print(
@@ -146,23 +169,21 @@ class Trainer:
             f"step: [{epoch_step}/{len(self.train_loader)}], "
             f"spatial batch loss: {spatial_loss:.5f}, "
             f"temporal batch loss: {temporal_loss:.5f}, "
-            f"accuracy: {accuracy * 100:2.2f}, "
+            f"top1 accuracy: {top1.item():2.2f}, "
+            f"top3 accuracy: {top3.item():2.2f}, "
             f"data load time: {data_load_time:.5f}, "
             f"step time: {step_time:.5f}"
         )
 
     def log_metrics(
-        self,
-        epoch,
-        accuracy,
-        spatial_loss,
-        temporal_loss,
-        data_load_time,
-        step_time,
+        self, epoch, top1, top3, spatial_loss, temporal_loss, data_load_time, step_time,
     ):
         self.summary_writer.add_scalar("epoch", epoch, self.step)
         self.summary_writer.add_scalars(
-            "accuracy", {"train": accuracy}, self.step
+            "top1_accuracy", {"train": top1.item()}, self.step
+        )
+        self.summary_writer.add_scalars(
+            "top3_accuracy", {"train": top3.item()}, self.step
         )
         self.summary_writer.add_scalars(
             "spatial_loss", {"train": float(spatial_loss.item())}, self.step
@@ -173,51 +194,49 @@ class Trainer:
         self.summary_writer.add_scalar("time/data", data_load_time, self.step)
         self.summary_writer.add_scalar("time/data", step_time, self.step)
 
-    def save_model(self, accuracy):
-        print(f"Saving model to {self.save_path} with accuracy of {accuracy*100:2.2f}")
-        torch.save(
-            {"model": self.model.state_dict(), "accuracy": accuracy}, self.save_path
-        )
 
     def validate(self):
-        results = {"predictions": [], "labels": []}
+
+        print("==> Validation Stage")
+
+        results = {"labels": [], "predictions": []}
         total_spatial_loss = 0
         total_temporal_loss = 0
 
         # Turn on evaluation mode for network. This ensures that dropout is not applied
         # during validation and a different form of batch normalisation is used.
-        self.spatial_model.eval()
-        self.temporal_model.eval()
+        self.spatial.model.eval()
+        self.temporal.model.eval()
 
         # No need to track gradients for validation, we're not optimizing.
         with torch.no_grad():
             for i, (spatial_data, temporal_data, labels) in enumerate(
-                self.test_loader
+                tqdm(self.test_loader, desc="Validation", leave=False, unit="batch")
             ):
+
                 spatial_data = spatial_data.to(self.device)
                 temporal_data = temporal_data.to(self.device)
                 labels = labels.to(self.device)
-                
-                spatial_logits = self.spatial_model(spatial_data)
-                temporal_logits = self.temporal_model(temporal_data)
-                
-                spatial_loss = self.spatial_criterion(spatial_logits, labels)
-                temporal_loss = self.temporal_criterion(temporal_logits, labels)
-                
+
+                spatial_logits = self.spatial.model(spatial_data)
+                temporal_logits = self.temporal.model(temporal_data)
+
+                spatial_loss = self.spatial.criterion(spatial_logits, labels)
+                temporal_loss = self.temporal.criterion(temporal_logits, labels)
+
                 total_spatial_loss += spatial_loss.item()
                 total_temporal_loss += temporal_loss.item()
 
                 # Accumulate predictions against ground truth labels
                 fusion_logits = average_fusion(spatial_logits, temporal_logits)
-                predictions = fusion_logits.argmax(dim=-1).cpu().numpy()
-                results["predictions"].extend(list(predictions))
-                results["labels"].extend(list(labels.cpu().numpy()))
 
         # Get accuracy by checking for correct predictions across all predictions
-        accuracy = accuracy()
+        top1, top3 = compute_topk_accuracy(
+            torch.from_numpy(fusion_logits), labels, topk=(1, 3)
+        )
 
         # Get per class accuracies and sort by label value (0...9)
-        class_accuracy = class_accuracy()
+        per_class_accuracy = compute_class_accuracy()
 
         # Get average loss for each stream
         average_spatial_loss = total_spatial_loss / len(self.test_loader)
@@ -225,16 +244,28 @@ class Trainer:
 
         # Log metrics
         self.summary_writer.add_scalars(
-            "accuracy", {"validation": accuracy}, self.step
+            "top1_accuracy", {"validation": top1.item()}, self.step
         )
-        self.summary_writer.add_scalars("average_spatial_loss", {"validation": average_spatial_loss}, self.step)
-        self.summary_writer.add_scalars("average_temporal_loss", {"validation": average_temporal_loss}, self.step)
+        self.summary_writer.add_scalars(
+            "top3_accuracy", {"validation": top3.item()}, self.step
+        )
+        self.summary_writer.add_scalars(
+            "spatial_loss", {"validation": average_spatial_loss}, self.step
+        )
+        self.summary_writer.add_scalars(
+            "temporal_loss", {"validation": average_temporal_loss}, self.step
+        )
 
-        print(
-            f"Validation results:\n"
-            f"avg spatial loss: {average_spatial_loss:.5f}, "
-            f"avg temporal loss: {average_temporal_loss:.5f}, "
-            f"accuracy: {accuracy * 100:2.2f}\n"
-            f"per class accuracies: {per_class_accuracies}"
-        )
-        return accuracy
+        print("==> Results")
+        validation_results = [
+            ["Average Spatial Loss:", f"{average_spatial_loss:.5f}"],
+            ["Average Temporal Loss:", f"{average_temporal_loss:.5f}"],
+            ["Top1 Accuracy:", f"{top1.item()}"],
+            ["Top3 Accuracy:", f"{top3.item()}"],
+        ]
+
+        print(tabulate(validation_results, tablefmt="fancy_grid"))
+
+        # TODO: print per class accuracy in separate table
+
+        return top1

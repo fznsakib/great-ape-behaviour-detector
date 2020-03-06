@@ -5,17 +5,13 @@ import os
 import torch
 import torchvision
 import argparse
-import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
-import torch.optim as optim
-import torch.backends.cudnn as cudnn
 from multiprocessing import cpu_count
-from torch.optim import lr_scheduler
-from torch.autograd import Variable
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms, utils
+from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from tabulate import tabulate
 from pathlib import Path
 
 """""" """""" """""" """""" """""" """""" """""" """
@@ -25,6 +21,7 @@ import spatial
 import temporal
 import trainer
 from dataloader.dataset import GreatApeDataset
+from utils import *
 
 """""" """""" """""" """""" """""" """""" """""" """
 GPU Initialisation
@@ -41,28 +38,76 @@ else:
 Argument Parser
 """ """""" """""" """""" """""" """""" """""" """"""
 
-default_dataset_dir = f"{os.getcwd()}/mini_dataset"
+default_dataset_dir = Path(f"{os.getcwd()}/../scratch/dataset")
+default_classes_dir = Path(f"{default_dataset_dir}/classes.txt")
+default_checkpoints_dir = Path(f"{os.getcwd()}/../scratch/checkpoints")
 
 parser = argparse.ArgumentParser(
     description="A spatial & temporal-based two-stream convolutional neural network for recognising great ape behaviour.",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
-parser.add_argument("--dataset-root", default=default_dataset_dir)
-parser.add_argument("--log-dir", default=Path("logs"), type=Path)
-parser.add_argument("--learning-rate", default=0.001, type=float, help="Learning rate")
-parser.add_argument("--sgd-momentum", default=0.9, type=float, help="SGD momentum")
-parser.add_argument("--spatial-dropout", default=0.5, type=float, help="Spatial dropout probability")
-parser.add_argument("--temporal-dropout", default=0.5, type=float, help="Temporal dropout probability")
-parser.add_argument("--checkpoint-path", default=Path("/checkpoints"), type=Path)
+
+# Paths
 parser.add_argument(
-    "--epochs", default=50, type=int, help="Number of epochs to train the network for"
+    "--dataset-path", default=default_dataset_dir, type=Path, help="Path to root of dataset"
 )
 parser.add_argument(
-    "--checkpoint-frequency",
+    "--log-path", default=Path("logs"), type=Path, help="Path to where logs will be saved"
+)
+parser.add_argument("--classes", default=default_classes_dir, type=Path, help="Path to classes.txt")
+parser.add_argument(
+    "--checkpoint-path",
+    default=default_checkpoints_dir,
+    type=Path,
+    help="Path to root of saved model checkpoints",
+)
+
+# Hyperparameters
+parser.add_argument("--batch-size", default=32, type=int, help="Batch size")
+parser.add_argument(
+    "--learning-rate", default=0.001, type=float, help="Learning rate",
+)
+parser.add_argument(
+    "--sgd-momentum", default=0.9, type=float, help="SGD momentum",
+)
+parser.add_argument(
+    "--epochs", default=50, type=int, help="Number of epochs to train the network for",
+)
+
+# Dataloader parameters
+parser.add_argument(
+    "--sample-interval", default=10, type=int, help="Frame interval at which samples are taken",
+)
+parser.add_argument(
+    "--optical-flow",
+    default=5,
     type=int,
-    default=1,
-    help="Save a checkpoint every N epochs",
+    help="Number of frames of optical flow to provide the temporal stream",
 )
+parser.add_argument(
+    "--activity-duration",
+    default=72,
+    type=int,
+    help="Threshold at which a stream of activity is considered a valid sample",
+)
+
+# Frequency values
+parser.add_argument(
+    "--val-frequency", type=int, default=1, help="Test the model on validation data every N epochs",
+)
+parser.add_argument(
+    "--log-frequency", type=int, default=1, help="Log to metrics Tensorboard every N epochs",
+)
+parser.add_argument(
+    "--print-frequency", type=int, default=1, help="Print model metrics every N epochs",
+)
+
+# Miscellaneous
+parser.add_argument(
+    "--name", default="", type=str, help="Toggle model checkpointing by providing name"
+)
+parser.add_argument("--resume", action="store_true", help="Load and resume model for training")
+
 parser.add_argument(
     "-j",
     "--worker-count",
@@ -75,41 +120,110 @@ parser.add_argument(
 Main
 """ """""" """""" """""" """""" """""" """""" """"""
 
+
 def main(args):
 
-    print('here')
-    
-    # TODO: Mean flow subtraction
-    
-    # TODO: Initialise dataset
-    # TODO: Initialise dataloader
-    train_dataset = GreatApeDataset(f'{args.dataset_root}/splits/trainingdata.txt', f'{args.dataset_root}/frames', f'{args.dataset_root}/annotations')
-    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False, num_workers=args.worker_count)
-    
+    classes = open(args.classes).read().strip().split()
+
+    print("==> Initialising training dataset")
+
+    train_dataset = GreatApeDataset(
+        mode="train",
+        sample_interval=args.sample_interval,
+        no_of_optical_flow=args.optical_flow,
+        activity_duration_threshold=args.activity_duration,
+        video_names=f"{args.dataset_path}/splits/trainingdata.txt",
+        classes=classes,
+        frame_dir=f"{args.dataset_path}/frames",
+        annotations_dir=f"{args.dataset_path}/annotations",
+        spatial_transform=transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
+            ]
+        ),
+        temporal_transform=transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5], std=[0.5]),
+            ]
+        ),
+    )
+    train_loader = DataLoader(
+        train_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.worker_count,
+    )
+
+    print("==> Initialising validation dataset")
+
+    test_dataset = GreatApeDataset(
+        mode="validation",
+        sample_interval=args.sample_interval,
+        no_of_optical_flow=args.optical_flow,
+        activity_duration_threshold=args.activity_duration,
+        video_names=f"{args.dataset_path}/splits/validationdata.txt",
+        classes=classes,
+        frame_dir=f"{args.dataset_path}/frames",
+        annotations_dir=f"{args.dataset_path}/annotations",
+        spatial_transform=transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
+            ]
+        ),
+        temporal_transform=transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5], std=[0.5]),
+            ]
+        ),
+    )
+    test_loader = DataLoader(
+        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.worker_count,
+    )
+
+    print("==> Dataset properties")
+
+    dataset_argument_table = [
+        ["Sample Interval", args.sample_interval],
+        ["Temporal Stack Size", args.optical_flow],
+        ["Activity Duration Threshold", args.activity_duration,],
+    ]
+
+    dataset_table = [
+        ["Train", train_dataset.__len__()],
+        ["Validation", test_dataset.__len__()],
+    ]
+
+    print(tabulate(dataset_argument_table, headers=["Parameter", "Value"], tablefmt="fancy_grid",))
+    print(
+        tabulate(
+            dataset_table, headers=["Dataset Type", "Number of Samples"], tablefmt="fancy_grid",
+        )
+    )
+
     # Initialise CNNs for spatial and temporal streams
     spatial_model = spatial.CNN(
-        height=224, width=224, channels=10, dropout=args.spatial_dropout
+        lr=args.learning_rate, num_classes=len(classes), channels=3, device=DEVICE
     )
-
     temporal_model = temporal.CNN(
-        height=224, width=224, channels=10, dropout=args.temporal_dropout
+        lr=args.learning_rate,
+        num_classes=len(classes),
+        channels=args.optical_flow * 2,
+        device=DEVICE,
     )
 
-    # Define loss criterion as softmax cross entropy
-    spatial_criterion = nn.CrossEntropyLoss()
-    temporal_criterion = nn.CrossEntropyLoss()
-
-    # Define optimisers
-    spatial_optimiser = optim.SGD(spatial_model.parameters(), lr=0.001, momentum=0.9)
-    temporal_optimiser = optim.SGD(temporal_model.parameters(), lr=0.001, momentum=0.9)
-
-    # Schedulers for decaying the learning rate over time. May be needed later on.
-    # spatial_scheduler = lr_scheduler.StepLR(spat_optimizer, step_size=10, gamma=0.1)
-    # temporal_scheduler = lr_scheduler.StepLR(temp_optimizer, step_size=10, gamma=0.1)
+    # If resuming, then load saved checkpoints
+    if args.resume:
+        spatial_model.load_checkpoint(args.checkpoint_path)
+        temporal_model.load_checkpoint(args.checkpoint_path)
 
     # Initialise log writing
     log_dir = get_summary_writer_log_dir(args)
-    print(f"Writing logs to {log_dir}")
+    print(f"==> Writing logs to {log_dir}")
     summary_writer = SummaryWriter(str(log_dir), flush_secs=5)
 
     # Initialise trainer with both CNNs
@@ -118,22 +232,19 @@ def main(args):
         temporal_model,
         train_loader,
         test_loader,
-        spatial_criterion,
-        temporal_criterion,
-        spatial_optimiser,
-        temporal_optimiser,
         summary_writer,
         DEVICE,
-        args.checkpoint_frequency,
+        args.name,
         args.checkpoint_path,
-        args.log_dir,
     )
 
-    
     # Begin training
+    print("==> Begin training")
+    start_epoch = max(spatial_model.start_epoch, temporal_model.start_epoch)
     cnn_trainer.train(
-        args.epochs,
-        args.val_frequency,
+        epochs=args.epochs,
+        start_epoch=start_epoch,
+        val_frequency=args.val_frequency,
         print_frequency=args.print_frequency,
         log_frequency=args.log_frequency,
     )
@@ -143,7 +254,8 @@ def main(args):
 LOGGING FUNCTIONS
 """ """""" """""" """""" """""" """""" """""" """"""
 
-def get_summary_writer_log_dir(args: argparse.Namespace) -> str:
+
+def get_summary_writer_log_dir(args: argparse.Namespace,) -> str:
     """Get a unique directory that hasn't been logged to before for use with a TB
     SummaryWriter.
 
@@ -156,14 +268,15 @@ def get_summary_writer_log_dir(args: argparse.Namespace) -> str:
         untangle in TB).
     """
 
-    tb_log_dir_prefix = f"CNN_run_"
+    tb_log_dir_prefix = f"{args.name}_run_"
     i = 0
     while i < 1000:
-        tb_log_dir = args.log_dir / (tb_log_dir_prefix + str(i))
+        tb_log_dir = args.log_path / (tb_log_dir_prefix + str(i))
         if not tb_log_dir.exists():
             return str(tb_log_dir)
         i += 1
     return str(tb_log_dir)
+
 
 """""" """""" """""" """""" """""" """""" """""" """
 Call main()
