@@ -78,11 +78,13 @@ class GreatApeDataset(torch.utils.data.Dataset):
         """
         Spatial Data
         """
-        path = f"{self.frame_dir}/rgb/{video}/{video}_frame_{start_frame}.jpg"
+        # Get the RGB spatial frame at the end of the temporal stack
+        spatial_frame_no = start_frame + (self.no_of_optical_flow - 1)
+        path = f"{self.frame_dir}/rgb/{video}/{video}_frame_{spatial_frame_no}.jpg"
         spatial_image = Image.open(path)
 
         # Get ape and its coordinates
-        ape = get_ape_by_id(self.annotations_dir, video, start_frame, ape_id)
+        ape = get_ape_by_id(self.annotations_dir, video, spatial_frame_no, ape_id)
         coordinates = get_ape_coordinates(ape)
         
         # Crop around ape and apply transforms
