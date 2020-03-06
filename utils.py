@@ -45,7 +45,7 @@ def save_checkpoint(spatial_state, temporal_state, is_best_model, name, save_pat
 
     checkpoint_path = f'{save_path}/{name}'
     
-    if not os.exists(checkpoint_path):
+    if not os.path.isdir(checkpoint_path):
         os.mkdir(checkpoint_path)
     
     torch.save(spatial_state, f'{checkpoint_path}/spatial')

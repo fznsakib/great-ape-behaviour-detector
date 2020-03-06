@@ -144,15 +144,15 @@ class Trainer:
                     print(f'==> Saving model checkpoint with top1 accuracy {validation_accuracy}')
                     save_checkpoint(
                         {
-                            "state_dict": self.spatial.state_dict(),
+                            "state_dict": self.spatial.model.state_dict(),
                             "optimiser": self.spatial.optimiser.state_dict(),
-                            "epoch": self.epoch,
+                            "epoch": epoch,
                             "accuracy": validation_accuracy,
                         },
                         {
                             "state_dict": self.temporal.model.state_dict(),
                             "optimiser": self.temporal.optimiser.state_dict(),
-                            "epoch": self.epoch,
+                            "epoch": epoch,
                             "accuracy": validation_accuracy,
                         },
                         is_best_model,

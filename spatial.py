@@ -15,7 +15,7 @@ class CNN():
 
         print ('==> Initialising spatial CNN model')
         # self.model = models.vgg16(pretrained=True, progress=True)        
-        self.model = network.resnet152(pretrained=True, num_classes=num_classes, channels=channels)
+        self.model = network.resnet101(pretrained=True, num_classes=num_classes, channels=channels)
         
         # Send the model to GPU
         self.model = self.model.to(device)
