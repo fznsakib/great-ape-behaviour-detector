@@ -54,7 +54,7 @@ class Trainer:
 
             data_load_start_time = time.time()
 
-            for i, (spatial_data, temporal_data, labels) in enumerate(
+            for i, (spatial_data, temporal_data, labels, metadata) in enumerate(
                 self.train_loader
             ):
                 # Set gradients to zero
@@ -198,7 +198,7 @@ class Trainer:
 
         print("==> Validation Stage")
 
-        results = {"labels": [], "predictions": []}
+        results = {"labels": [], "logits": []}
         total_spatial_loss = 0
         total_temporal_loss = 0
 
@@ -209,7 +209,7 @@ class Trainer:
 
         # No need to track gradients for validation, we're not optimizing.
         with torch.no_grad():
-            for i, (spatial_data, temporal_data, labels) in enumerate(
+            for i, (spatial_data, temporal_data, labels, metadata) in enumerate(
                 tqdm(self.test_loader, desc="Validation", leave=False, unit="batch")
             ):
 
@@ -229,9 +229,15 @@ class Trainer:
                 # Accumulate predictions against ground truth labels
                 fusion_logits = average_fusion(spatial_logits, temporal_logits)
 
+                # Populate dictionary with logits and labels of all samples in this batch
+                for i in range(len(labels)):
+                    results['labels'].append(labels[i].item())
+                    results['logits'].append(fusion_logits[i].tolist())
+
+
         # Get accuracy by checking for correct predictions across all predictions
         top1, top3 = compute_topk_accuracy(
-            torch.from_numpy(fusion_logits), labels, topk=(1, 3)
+            torch.LongTensor(results['logits']), torch.LongTensor(results['labels']), topk=(1, 3)
         )
 
         # Get per class accuracies and sort by label value (0...9)
