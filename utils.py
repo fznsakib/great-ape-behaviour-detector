@@ -1,6 +1,7 @@
 import os
 import torch
 import numpy as np
+import shutil
 from typing import NamedTuple
     
 # Compute the fusion logits across the spatial and temporal stream to perform average fusion

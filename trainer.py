@@ -265,8 +265,8 @@ class Trainer:
         validation_results = [
             ["Average Spatial Loss:", f"{average_spatial_loss:.5f}"],
             ["Average Temporal Loss:", f"{average_temporal_loss:.5f}"],
-            ["Top1 Accuracy:", f"{top1.item()}"],
-            ["Top3 Accuracy:", f"{top3.item()}"],
+            ["Top1 Accuracy:", f"{top1.item():.2f}"],
+            ["Top3 Accuracy:", f"{top3.item():.2f}"],
         ]
 
         print(tabulate(validation_results, tablefmt="fancy_grid"))
