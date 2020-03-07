@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torchvision.models as models
 import torch.optim as optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import network
 from utils import *
@@ -14,16 +15,15 @@ class CNN():
         self.accuracy = 0
         
         print ('==> Initialising temporal CNN model')
-        # self.model = models.vgg16(pretrained=True, progress=True)       
-        self.model = network.resnet101(pretrained=True, num_classes=num_classes, channels=channels)
+
+        self.model = network.resnet18(pretrained=True, num_classes=num_classes, channels=channels)
 
         # Send the model to GPU
         self.model = self.model.to(device)
         
         self.criterion = nn.CrossEntropyLoss()
-        # change to adam maybe?
         self.optimiser = optim.SGD(self.model.parameters(), lr=self.lr, momentum=0.9)
-        # self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', patience=1,verbose=True)
+        self.scheduler = ReduceLROnPlateau(self.optimiser, 'min', patience=1, verbose=True)
         
     def load_checkpoint(self, name, checkpoint_path):
         checkpoint_file_path = f'{checkpoint_path}/{name}/temporal'

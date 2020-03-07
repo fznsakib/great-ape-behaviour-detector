@@ -121,7 +121,11 @@ class Trainer:
 
             # Go into validation mode if condition met
             if ((epoch + 1) % val_frequency) == 0:
-                validation_accuracy = self.validate()
+                validation_accuracy, validation_spatial_loss, validation_temporal_loss = self.validate()
+
+                # Adjust LR using scheduler
+                self.spatial.scheduler.step(validation_spatial_loss)
+                self.temporal.scheduler.step(validation_temporal_loss)
 
                 # Switch back to train mode after validation
                 self.spatial.model.train()
@@ -131,15 +135,10 @@ class Trainer:
                 if self.name:
                     is_best_model = validation_accuracy > self.best_accuracy
 
-                    # lr_scheduler
-                    # self.scheduler.step(val_loss)
-                    # save model
+                    # Save model
                     if is_best_model:
                         print(f'==> Best model found with top1 accuracy {validation_accuracy}')
                         self.best_accuracy = validation_accuracy
-                        with open(f"output/{self.name}.pickle", "wb") as f:
-                            pickle.dump(self.validation_results, f)
-                        f.close()
 
                     print(f'==> Saving model checkpoint with top1 accuracy {validation_accuracy}')
                     save_checkpoint(
@@ -203,7 +202,7 @@ class Trainer:
         total_spatial_loss = 0
         total_temporal_loss = 0
 
-        # Turn on evaluation mode for network. This ensures that dropout is not applied
+        # Turn on evaluation mode for networks. This ensures that dropout is not applied
         # during validation and a different form of batch normalisation is used.
         self.spatial.model.eval()
         self.temporal.model.eval()
@@ -268,4 +267,4 @@ class Trainer:
 
         # TODO: print per class accuracy in separate table
 
-        return top1
+        return top1, average_spatial_loss, average_temporal_loss
