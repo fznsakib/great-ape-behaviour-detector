@@ -54,7 +54,7 @@ class Trainer:
 
             data_load_start_time = time.time()
 
-            for i, (spatial_data, temporal_data, labels) in enumerate(
+            for i, (spatial_data, temporal_data, labels, metadata) in enumerate(
                 self.train_loader
             ):
                 # Set gradients to zero
@@ -121,7 +121,11 @@ class Trainer:
 
             # Go into validation mode if condition met
             if ((epoch + 1) % val_frequency) == 0:
-                validation_accuracy = self.validate()
+                validation_accuracy, validation_spatial_loss, validation_temporal_loss = self.validate()
+
+                # Adjust LR using scheduler
+                self.spatial.scheduler.step(validation_spatial_loss)
+                self.temporal.scheduler.step(validation_temporal_loss)
 
                 # Switch back to train mode after validation
                 self.spatial.model.train()
@@ -131,28 +135,23 @@ class Trainer:
                 if self.name:
                     is_best_model = validation_accuracy > self.best_accuracy
 
-                    # lr_scheduler
-                    # self.scheduler.step(val_loss)
-                    # save model
+                    # Save model
                     if is_best_model:
                         print(f'==> Best model found with top1 accuracy {validation_accuracy}')
                         self.best_accuracy = validation_accuracy
-                        with open(f"output/{self.name}.pickle", "wb") as f:
-                            pickle.dump(self.validation_results, f)
-                        f.close()
 
                     print(f'==> Saving model checkpoint with top1 accuracy {validation_accuracy}')
                     save_checkpoint(
                         {
-                            "state_dict": self.spatial.state_dict(),
+                            "state_dict": self.spatial.model.state_dict(),
                             "optimiser": self.spatial.optimiser.state_dict(),
-                            "epoch": self.epoch,
+                            "epoch": epoch,
                             "accuracy": validation_accuracy,
                         },
                         {
                             "state_dict": self.temporal.model.state_dict(),
                             "optimiser": self.temporal.optimiser.state_dict(),
-                            "epoch": self.epoch,
+                            "epoch": epoch,
                             "accuracy": validation_accuracy,
                         },
                         is_best_model,
@@ -199,18 +198,18 @@ class Trainer:
 
         print("==> Validation Stage")
 
-        results = {"labels": [], "predictions": []}
+        results = {"labels": [], "logits": []}
         total_spatial_loss = 0
         total_temporal_loss = 0
 
-        # Turn on evaluation mode for network. This ensures that dropout is not applied
+        # Turn on evaluation mode for networks. This ensures that dropout is not applied
         # during validation and a different form of batch normalisation is used.
         self.spatial.model.eval()
         self.temporal.model.eval()
 
         # No need to track gradients for validation, we're not optimizing.
         with torch.no_grad():
-            for i, (spatial_data, temporal_data, labels) in enumerate(
+            for i, (spatial_data, temporal_data, labels, metadata) in enumerate(
                 tqdm(self.test_loader, desc="Validation", leave=False, unit="batch")
             ):
 
@@ -230,9 +229,15 @@ class Trainer:
                 # Accumulate predictions against ground truth labels
                 fusion_logits = average_fusion(spatial_logits, temporal_logits)
 
+                # Populate dictionary with logits and labels of all samples in this batch
+                for i in range(len(labels)):
+                    results['labels'].append(labels[i].item())
+                    results['logits'].append(fusion_logits[i].tolist())
+
+
         # Get accuracy by checking for correct predictions across all predictions
         top1, top3 = compute_topk_accuracy(
-            torch.from_numpy(fusion_logits), labels, topk=(1, 3)
+            torch.LongTensor(results['logits']), torch.LongTensor(results['labels']), topk=(1, 3)
         )
 
         # Get per class accuracies and sort by label value (0...9)
@@ -260,12 +265,12 @@ class Trainer:
         validation_results = [
             ["Average Spatial Loss:", f"{average_spatial_loss:.5f}"],
             ["Average Temporal Loss:", f"{average_temporal_loss:.5f}"],
-            ["Top1 Accuracy:", f"{top1.item()}"],
-            ["Top3 Accuracy:", f"{top3.item()}"],
+            ["Top1 Accuracy:", f"{top1.item():.2f}"],
+            ["Top3 Accuracy:", f"{top3.item():.2f}"],
         ]
 
         print(tabulate(validation_results, tablefmt="fancy_grid"))
 
         # TODO: print per class accuracy in separate table
 
-        return top1
+        return top1, average_spatial_loss, average_temporal_loss

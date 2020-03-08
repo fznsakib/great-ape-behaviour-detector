@@ -207,6 +207,18 @@ def resnet50(pretrained, num_classes, channels):
        model.load_state_dict(model_dict)
     return model
 
+def resnet101(pretrained, num_classes, channels):
+
+    model = ResNet(Bottleneck, [3, 4, 23, 3], num_classes=num_classes, channels=channels)
+    if pretrained:
+       pretrain_dict = model_zoo.load_url(model_urls['resnet101'])
+       model_dict = model.state_dict()
+       model_dict=weight_transform(model_dict, pretrain_dict, channels)
+       model.load_state_dict(model_dict)
+
+    return model
+
+
 def resnet152(pretrained, num_classes, channels):
 
     model = ResNet(Bottleneck, [3, 8, 36, 3], num_classes, channels)

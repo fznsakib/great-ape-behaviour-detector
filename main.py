@@ -120,7 +120,6 @@ parser.add_argument(
 Main
 """ """""" """""" """""" """""" """""" """""" """"""
 
-
 def main(args):
 
     classes = open(args.classes).read().strip().split()
@@ -218,11 +217,14 @@ def main(args):
 
     # If resuming, then load saved checkpoints
     if args.resume:
-        spatial_model.load_checkpoint(args.checkpoint_path)
-        temporal_model.load_checkpoint(args.checkpoint_path)
+        spatial_model.load_checkpoint(args.name, args.checkpoint_path)
+        temporal_model.load_checkpoint(args.name, args.checkpoint_path)
 
     # Initialise log writing
-    log_dir = get_summary_writer_log_dir(args)
+    # log_dir = get_summary_writer_log_dir(args)
+    if not args.name:
+        args.name = 'test'
+    log_dir = f'{args.log_path}/{args.name}'
     print(f"==> Writing logs to {log_dir}")
     summary_writer = SummaryWriter(str(log_dir), flush_secs=5)
 

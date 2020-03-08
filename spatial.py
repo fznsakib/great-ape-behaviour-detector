@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torchvision.models as models
 import torch.optim as optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import network
 from utils import *
@@ -14,19 +15,21 @@ class CNN():
         self.accuracy = 0
 
         print ('==> Initialising spatial CNN model')
-        # self.model = models.vgg16(pretrained=True, progress=True)        
-        self.model = network.resnet152(pretrained=True, num_classes=num_classes, channels=channels)
+
+        self.model = network.resnet18(pretrained=True, num_classes=num_classes, channels=channels)
         
         # Send the model to GPU
         self.model = self.model.to(device)
             
         self.criterion = nn.CrossEntropyLoss()
-        # change to adam maybe?
         self.optimiser = optim.SGD(self.model.parameters(), lr=self.lr, momentum=0.9)
-        # self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', patience=1,verbose=True)
+        self.scheduler = ReduceLROnPlateau(self.optimiser, 'min', patience=1,verbose=True)
     
-    def load_checkpoint(self, checkpoint_path):
-        checkpoint_file_path = f'{checkpoint_path}/{self.name}/spatial'
+    def load_checkpoint(self, name, checkpoint_path, best=False):
+        checkpoint_file_path = f'{checkpoint_path}/{name}/spatial'
+
+        if best:
+            checkpoint_file_path = f'{checkpoint_file_path}_best'
         
         if os.path.isfile(checkpoint_file_path):
             checkpoint = torch.load(checkpoint_file_path)
@@ -35,6 +38,6 @@ class CNN():
             self.start_epoch = checkpoint['epoch']
             self.accuracy = checkpoint['accuracy']
             
-            print(f'==> Loaded spatial model checkpoint {args.name} at epoch {self.start_epoch} with top1 accuracy {self.accuracy}')
+            print(f'==> Loaded spatial model checkpoint {name} at epoch {self.start_epoch} with top1 accuracy {self.accuracy}')
         else:
             print(f'==> No checkpoint at {checkpoint_file_path} -- Training model from scratch')
