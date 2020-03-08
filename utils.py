@@ -186,10 +186,10 @@ def compute_confusion_matrix(labels, predictions, classes, output_path):
     np.set_printoptions(precision=2)
 
     # Plot normalized confusion matrix
-    plt.figure(figsize=(21,20))
+    plt.figure(figsize=(20,20))
     plot_confusion_matrix(cnf_matrix, classes=existing_classes, normalise=True, title='Normalised confusion matrix')
 
-    plt.savefig(f'{output_path}/confusion_matrix.png')
+    plt.savefig(f'{output_path}/confusion_matrix.png', bbox_inches = "tight")
     # plt.show()
 
 
@@ -198,27 +198,29 @@ def plot_confusion_matrix(cm, classes, normalise=False, title='Confusion matrix'
     
     if normalise:
         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-        print("Normalised Confusion Matrix")
-    else:
-        print('Unnormalised Confusion Matrix')
+    #     print("Normalised Confusion Matrix")
+    # else:
+    #     print('Unnormalised Confusion Matrix')
 
-    print(cm)
+    # print(cm)
 
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
-    plt.title(title, fontsize=30)
+    plt.title(title, fontsize=30, pad=30)
     plt.colorbar(fraction=0.046, pad=0.04)
     tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, classes, rotation=45)
-    plt.yticks(tick_marks, classes)
+    plt.xticks(tick_marks, classes, rotation=45, fontsize=14)
+    plt.yticks(tick_marks, classes, fontsize=14)
 
     fmt = '.2f' if normalise else 'd'
     thresh = cm.max() / 2.
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         plt.text(j, i, format(cm[i, j], fmt),
                  horizontalalignment="center",
-                 color="white" if cm[i, j] > thresh else "black")
+                 color="white" if cm[i, j] > thresh else "black",
+                 fontsize=20)
 
 
     plt.tight_layout()
+    plt.autoscale()
     plt.ylabel('True label', fontsize=20)
     plt.xlabel('Predicted label', fontsize=20)

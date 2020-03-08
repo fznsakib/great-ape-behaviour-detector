@@ -123,20 +123,19 @@ def main(args):
     if not os.path.exists(model_output_path):
         os.makedirs(model_output_path)
 
-    # print("==> Copying frames from dataset")
+    print("==> Copying frames from dataset")
     copy_frames_to_output(model_output_path, args.dataset_path, predictions_dict.keys())
     
-    # print("==> Drawing bounding boxes")
+    print("==> Drawing bounding boxes")
     draw_bounding_boxes(args, predictions_dict, classes, colours)
     
-    # print("==> Stitching frames to create final output videos")
+    print("==> Stitching frames to create final output videos")
     stitch_videos(model_output_path, args.dataset_path, predictions_dict)
 
-    # # Delete frame directories
+    # Delete frame directories
     for video in predictions_dict.keys():
         directory_path = f'{args.output_path}/{args.name}/{video}'
         shutil.rmtree(directory_path)
-
 
     print("==> Generating confusion matrix")
     labels = []

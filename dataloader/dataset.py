@@ -146,11 +146,11 @@ class GreatApeDataset(torch.utils.data.Dataset):
         """
 
         # Check if required json for this subset of data already exists
-        if os.path.isfile(f"dataloader/{self.mode}_samples.json"):
-            with open(f"dataloader/{self.mode}_samples.json", "r") as f:
-                self.samples = json.load(f)
-                return
-
+        # if os.path.isfile(f"dataloader/{self.mode}_samples.json"):
+        #     with open(f"dataloader/{self.mode}_samples.json", "r") as f:
+        #         self.samples = json.load(f)
+        #         return
+        
         # Go through every video in dataset
         for video in tqdm(self.video_names, desc=f'Initialising {self.mode} dataset', leave=False):
             # Count how many apes are present in the video
