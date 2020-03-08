@@ -11,7 +11,8 @@ from torchvision.utils import save_image
 from PIL import Image
 from tqdm import tqdm
 from skimage import io, transform
-from data_utils import *
+from statistics import mode
+from dataloader.data_utils import *
 
 
 class GreatApeDataset(torch.utils.data.Dataset):
@@ -54,13 +55,13 @@ class GreatApeDataset(torch.utils.data.Dataset):
         self.samples = {}
         self.spatial_transform = spatial_transform
         self.temporal_transform = temporal_transform
-
-        self.initialise_dataset()
-
-        # if mode == 'train':
-        #     self.initialise_training_dataset()
-        # elif mode == 'validation':
-        #     self.initialise_validation_dataset()
+        
+        if self.mode == 'train':
+            self.initialise_dataset()
+        elif self.mode == 'validation':
+            self.initialise_dataset()
+        elif self.mode == 'test':
+            self.initialise_test_dataset()
 
     def __len__(self):
         # If the length of the dataset has not yet been calculated, then do so and store it
@@ -127,7 +128,16 @@ class GreatApeDataset(torch.utils.data.Dataset):
         """
         label = self.classes.index(activity)
 
-        return spatial_data, temporal_data, label
+        """
+        Other data
+        """
+        metadata = {
+            'ape_id': ape_id,
+            'start_frame': start_frame,
+            'video': video
+        }
+
+        return spatial_data, temporal_data, label, metadata
 
     def initialise_dataset(self):
         """
@@ -142,7 +152,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                 return
 
         # Go through every video in dataset
-        for video in tqdm(self.video_names, desc=f'Initialising {self.mode} dataset'):
+        for video in tqdm(self.video_names, desc=f'Initialising {self.mode} dataset', leave=False):
             # Count how many apes are present in the video
             no_of_apes = get_no_of_apes(self.annotations_dir, video)
 
@@ -181,7 +191,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                             frame_no += valid_frames
                             continue
 
-                        # If this sample meets the required numnber of frames, break it down into smaller samples with the given interval
+                        # If this sample meets the required number of frames, break it down into smaller samples with the given interval
                         last_valid_frame = frame_no + valid_frames
                         for valid_frame_no in range(frame_no, last_valid_frame, self.sample_interval):
 
@@ -219,9 +229,89 @@ class GreatApeDataset(torch.utils.data.Dataset):
         f.write(samples_json)
         f.close()
 
+    def initialise_test_dataset(self):
+        """
+        Creates a dictionary which includes all spatial + temporal samples from the dataset.
+        These samples would then be used for a network to classify behaviour of.
+        The dictionary is exported as a json for later use.
+        """
+        # self.video_names = [self.video_names[0]]
+        # video_names = ['EmBzzEflhG']
+
+        # Go through every video in dataset
+        for video in tqdm(self.video_names, desc=f'Initialising {self.mode} dataset', leave=False):
+        # for video in tqdm(video_names, desc=f'Initialising {self.mode} dataset'):
+            # Count how many apes are present in the video
+            no_of_apes = get_no_of_apes(self.annotations_dir, video)
+            # print(f'video: {video}, no_of_apes: {no_of_apes}')
+
+            # Go through each ape by id for possible samples
+            for current_ape_id in range(0, no_of_apes + 1):
+                no_of_frames = len(glob.glob(f"{self.annotations_dir}/{video}/*.xml"))
+                frame_no = 1
+
+                # Traverse through every frame to get samples
+                while frame_no <= no_of_frames:
+                    if (no_of_frames - frame_no) < (self.sample_interval - 1):
+                        break
+
+                    # Find first instance of ape by id
+                    ape = get_ape_by_id(self.annotations_dir, video, frame_no, current_ape_id)
+
+                    if not ape:
+                        frame_no += 1
+                        continue
+                    else:
+                        activities = []
+                        insufficient_apes = False
+
+                        # Check that this ape exists for the next n frames
+                        for look_ahead_frame_no in range(frame_no, frame_no + self.sample_interval):
+                            ape = get_ape_by_id(self.annotations_dir, video, look_ahead_frame_no, current_ape_id)
+
+                            if ape:
+                                activities.append(ape.find("activity").text)
+                            else:
+                                insufficient_apes = True
+                                break
+                        
+                        # If the ape is not present for enough consecutive frames, then move on
+                        if insufficient_apes:
+                            # frame_no = look_ahead_frame_no
+                            frame_no += self.sample_interval
+                            continue
+
+                        # Get majority activity
+                        activity = mode(activities)
+                        
+                        # Check if there are enough frames left
+                        if (no_of_frames - frame_no) >= self.no_of_optical_flow:
+                            
+                            # Insert sample
+                            if video not in self.samples.keys():
+                                self.samples[video] = []
+
+                            self.samples[video].append(
+                                {
+                                    "ape_id": current_ape_id,
+                                    "activity": activity,
+                                    "start_frame": frame_no,
+                                }
+                            )
+                        
+                        frame_no += self.sample_interval
+                
+
+        samples_json = json.dumps(self.samples)
+        f = open(f"dataloader/{self.mode}_samples.json", "w")
+        f.write(samples_json)
+        f.close()
+
+        return
+
 if __name__ == "__main__":
 
-    mode = "train"
+    mode = "test"
     sample_interval = 10
     no_of_optical_flow = 5
     activity_duration_threshold = 72

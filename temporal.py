@@ -25,8 +25,11 @@ class CNN():
         self.optimiser = optim.SGD(self.model.parameters(), lr=self.lr, momentum=0.9)
         self.scheduler = ReduceLROnPlateau(self.optimiser, 'min', patience=1, verbose=True)
         
-    def load_checkpoint(self, name, checkpoint_path):
+    def load_checkpoint(self, name, checkpoint_path, best=False):
         checkpoint_file_path = f'{checkpoint_path}/{name}/temporal'
+
+        if best:
+            checkpoint_file_path = f'{checkpoint_file_path}_best'
         
         if os.path.isfile(checkpoint_file_path):
             checkpoint = torch.load(checkpoint_file_path)

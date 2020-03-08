@@ -30,6 +30,13 @@ Get activity of ape from ape XML element
 def get_activity(ape):
     activity = ape.find('activity').text
     return activity
+
+"""
+Get species of ape from ape XML element
+"""
+def get_species(ape):
+    species = ape.find('name').text
+    return species
             
 """
 Get number of apes present across a given video.

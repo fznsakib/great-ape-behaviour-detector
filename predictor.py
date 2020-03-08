@@ -2,6 +2,7 @@ import time
 import torch
 import torch.nn as nn
 import numpy as np
+import json
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from pathlib import Path
@@ -26,7 +27,6 @@ class Predictor:
         self.predictions = {}
 
     def predict(self):
-        print("==> Starting predictions")
 
         # Turn on evaluation for networkss 
         self.spatial.model.eval()
@@ -70,6 +70,3 @@ class Predictor:
         f.close()
 
         return self.predictions
-    
-    def create_output_videos(self):
-        return
