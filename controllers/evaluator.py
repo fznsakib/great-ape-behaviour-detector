@@ -8,9 +8,11 @@ from torch.utils.tensorboard import SummaryWriter
 from pathlib import Path
 from tqdm import tqdm
 from tabulate import tabulate
-from utils import *
 
-class Predictor:
+import utils.metrics as metrics
+from utils.utils import *
+
+class Evaluator:
     def __init__(
         self,
         spatial: nn.Module,
@@ -50,7 +52,7 @@ class Predictor:
                 temporal_logits = self.temporal.model(temporal_data)
 
                 # Accumulate predictions against ground truth labels
-                fusion_logits = average_fusion(spatial_logits, temporal_logits)
+                fusion_logits = metrics.average_fusion(spatial_logits, temporal_logits)
                 prediction = fusion_logits.argmax().item()
 
                 # Insert results to dictionary

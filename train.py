@@ -17,11 +17,11 @@ from pathlib import Path
 """""" """""" """""" """""" """""" """""" """""" """
 Custom Library Imports
 """ """""" """""" """""" """""" """""" """""" """"""
-import spatial
-import temporal
-import trainer
-from dataloader.dataset import GreatApeDataset
-from utils import *
+import models.spatial as spatial
+import models.temporal as temporal
+import controllers.trainer as trainer
+from dataset.dataset import GreatApeDataset
+from utils.utils import *
 
 """""" """""" """""" """""" """""" """""" """""" """
 GPU Initialisation
@@ -38,9 +38,10 @@ else:
 Argument Parser
 """ """""" """""" """""" """""" """""" """""" """"""
 
-default_dataset_dir = Path(f"{os.getcwd()}/../scratch/dataset")
-default_classes_dir = Path(f"{default_dataset_dir}/classes.txt")
-default_checkpoints_dir = Path(f"{os.getcwd()}/../scratch/checkpoints")
+default_data_path = Path(f"{os.getcwd()}/../scratch/data")
+default_checkpoints_path = Path(f"{os.getcwd()}/../scratch/checkpoints")
+default_logs_path = Path(f"{os.getcwd()}/../scratch/logs")
+default_classes_path = Path(f"{default_data_path}/classes.txt")
 
 parser = argparse.ArgumentParser(
     description="A spatial & temporal-based two-stream convolutional neural network for recognising great ape behaviour.",
@@ -49,15 +50,15 @@ parser = argparse.ArgumentParser(
 
 # Paths
 parser.add_argument(
-    "--dataset-path", default=default_dataset_dir, type=Path, help="Path to root of dataset"
+    "--dataset-path", default=default_data_path, type=Path, help="Path to root of dataset"
 )
 parser.add_argument(
-    "--log-path", default=Path("logs"), type=Path, help="Path to where logs will be saved"
+    "--log-path", default=default_logs_path, type=Path, help="Path to where logs will be saved"
 )
-parser.add_argument("--classes", default=default_classes_dir, type=Path, help="Path to classes.txt")
+parser.add_argument("--classes", default=default_classes_path, type=Path, help="Path to classes.txt")
 parser.add_argument(
     "--checkpoint-path",
-    default=default_checkpoints_dir,
+    default=default_checkpoints_path,
     type=Path,
     help="Path to root of saved model checkpoints",
 )
@@ -225,7 +226,7 @@ def main(args):
     if not args.name:
         args.name = 'test'
     log_dir = f'{args.log_path}/{args.name}'
-    print(f"==> Writing logs to {log_dir}")
+    print(f"==> Writing logs to {os.path.basename(log_dir)}")
     summary_writer = SummaryWriter(str(log_dir), flush_secs=5)
 
     # Initialise trainer with both CNNs

@@ -24,12 +24,12 @@ from tqdm import tqdm
 """""" """""" """""" """""" """""" """""" """""" """
 Custom Library Imports
 """ """""" """""" """""" """""" """""" """""" """"""
-import spatial
-import temporal
-import predictor
-from dataloader.dataset import GreatApeDataset
-from dataloader.data_utils import *
-from utils import *
+import models.spatial as spatial
+import models.temporal as temporal
+import controllers.evaluator as evaluator
+from dataset.dataset import GreatApeDataset
+from utils.utils import *
+import utils.metrics as metrics
 
 """""" """""" """""" """""" """""" """""" """""" """
 GPU Initialisation
@@ -104,8 +104,8 @@ def main(args):
         test_dataset, batch_size=1, shuffle=False, num_workers=args.worker_count,
     )
 
-    # Initialise Predictor
-    network_predictor = predictor.Predictor(
+    # Initialise evaluator
+    network_evaluator = evaluator.Evaluator(
         spatial=spatial_model,
         temporal=temporal_model,
         data_loader=test_loader,
@@ -115,7 +115,7 @@ def main(args):
 
     
     print("==> Making predictions")
-    predictions_dict = network_predictor.predict()
+    predictions_dict = network_evaluator.predict()
 
     # Create directory for this model's predictions
     if args.best:
@@ -125,10 +125,10 @@ def main(args):
         os.makedirs(model_output_path)
 
     print("==> Copying frames from dataset")
-    copy_frames_to_output(model_output_path, args.dataset_path, predictions_dict.keys())
+    # copy_frames_to_output(model_output_path, args.dataset_path, predictions_dict.keys())
     
     print("==> Drawing bounding boxes")
-    draw_bounding_boxes(args, predictions_dict, classes, colours)
+    draw_bounding_boxes(args, predictions_dict, classes)
     
     print("==> Stitching frames to create final output videos")
     stitch_videos(model_output_path, args.dataset_path, predictions_dict)
@@ -139,7 +139,7 @@ def main(args):
         shutil.rmtree(directory_path)
 
     print("==> Generating confusion matrix")
-    compute_confusion_matrix(predictions_dict, classes, model_output_path)
+    metrics.compute_confusion_matrix(predictions_dict, classes, model_output_path)
 
     print("==> Creating zip file")
     zip_videos(model_output_path, args.name)
@@ -159,10 +159,10 @@ if __name__ == "__main__":
     Argument Parser
     """ """""" """""" """""" """""" """""" """""" """"""
 
-    default_dataset_dir = Path(f"{os.getcwd()}/../scratch/dataset")
+    default_dataset_dir = Path(f"{os.getcwd()}/../scratch/data")
     default_output_dir = Path(f"{os.getcwd()}/../scratch/output")
-    default_classes_dir = Path(f"{default_dataset_dir}/classes.txt")
     default_checkpoints_dir = Path(f"{os.getcwd()}/../scratch/checkpoints")
+    default_classes_dir = Path(f"{default_dataset_dir}/classes.txt")
 
     parser = argparse.ArgumentParser(
         description="Perform behaviour recognition on great ape videos.",

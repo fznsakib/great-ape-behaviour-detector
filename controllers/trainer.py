@@ -6,7 +6,9 @@ from torch.utils.tensorboard import SummaryWriter
 from pathlib import Path
 from tqdm import tqdm
 from tabulate import tabulate
-from utils import *
+
+import utils.metrics as metrics
+from utils.utils import *
 
 
 class Trainer:
@@ -85,8 +87,8 @@ class Trainer:
 
                 # Compute accuracy
                 with torch.no_grad():
-                    fusion_logits = average_fusion(spatial_logits, temporal_logits)
-                    top1, top3 = compute_topk_accuracy(
+                    fusion_logits = metrics.average_fusion(spatial_logits, temporal_logits)
+                    top1, top3 = metrics.compute_topk_accuracy(
                         torch.from_numpy(fusion_logits), labels, topk=(1, 3)
                     )
 
@@ -227,7 +229,7 @@ class Trainer:
                 total_temporal_loss += temporal_loss.item()
 
                 # Accumulate predictions against ground truth labels
-                fusion_logits = average_fusion(spatial_logits, temporal_logits)
+                fusion_logits = metrics.average_fusion(spatial_logits, temporal_logits)
 
                 # Populate dictionary with logits and labels of all samples in this batch
                 for i in range(len(labels)):
@@ -236,12 +238,12 @@ class Trainer:
 
 
         # Get accuracy by checking for correct predictions across all predictions
-        top1, top3 = compute_topk_accuracy(
+        top1, top3 = metrics.compute_topk_accuracy(
             torch.LongTensor(results['logits']), torch.LongTensor(results['labels']), topk=(1, 3)
         )
 
         # Get per class accuracies and sort by label value (0...9)
-        per_class_accuracy = compute_class_accuracy()
+        per_class_accuracy = metrics.compute_class_accuracy()
 
         # Get average loss for each stream
         average_spatial_loss = total_spatial_loss / len(self.test_loader)
