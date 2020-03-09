@@ -63,10 +63,5 @@ class Predictor:
                     "prediction": prediction,
                     "start_frame": start_frame.item()
                 })
-        
-        predictions_json = json.dumps(self.predictions)
-        f = open(f"predictions.json", "w")
-        f.write(predictions_json)
-        f.close()
 
         return self.predictions

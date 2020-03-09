@@ -4,13 +4,16 @@ import numpy as np
 import shutil
 import glob
 import cv2
+import boto3
 import argparse
 import itertools
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from typing import NamedTuple
+from zipfile import ZipFile
 from sklearn.metrics import confusion_matrix
 from PIL import ImageFont, ImageDraw, Image  
+from botocore.exceptions import ClientError
 
 from dataloader.data_utils import *
     
@@ -88,7 +91,7 @@ def draw_bounding_boxes(args, predictions, classes, colours):
 
     # Draw bounding boxes on frames
     for video in tqdm(predictions.keys(), desc="Drawing bounding boxes", leave=False, unit="video"):
-        for annotation in tqdm(predictions[video]):
+        for annotation in tqdm(predictions[video], leave=False):
             
             ape_id = annotation['ape_id']
             label = annotation['label']
@@ -173,7 +176,14 @@ def stitch_videos(model_output_path, dataset_path, predictions):
 
 
 # Compute confusion matrix from labels and predictions
-def compute_confusion_matrix(labels, predictions, classes, output_path):
+def compute_confusion_matrix(predictions_dict, classes, output_path):
+
+    labels = []
+    predictions = []
+    for video in predictions_dict.keys():
+        for annotation in predictions_dict[video]:
+            labels.append(annotation['label'])
+            predictions.append(annotation['prediction'])
 
     existing_classes = []
 
@@ -224,3 +234,33 @@ def plot_confusion_matrix(cm, classes, normalise=False, title='Confusion matrix'
     plt.autoscale()
     plt.ylabel('True label', fontsize=20)
     plt.xlabel('Predicted label', fontsize=20)
+
+def zip_videos(model_output_path, name):
+    file_paths = []
+    file_names = []
+
+    for root, directories, files in os.walk(model_output_path):
+        for filename in files:
+            filepath = os.path.join(root, filename)
+            file_paths.append(filepath)
+            file_names.append(os.path.basename(filepath))
+
+    with ZipFile(f'{model_output_path}/{name}.zip','w') as zip: 
+        for i, file in enumerate(tqdm(file_paths, desc="Zipping videos", leave=False, unit="video")): 
+            zip.write(file, arcname=file_names[i]) 
+
+def upload_videos(model_output_path, name, bucket):
+     
+    s3 = boto3.client('s3')
+    
+    # Validate AWS credentials 
+    try:
+        response = s3.list_buckets()
+        print(f"AWS account credentials found. Uploading output to S3 bucket {bucket}")
+    except ClientError as e:
+        print("AWS account credentials not found. Skipping upload.")
+
+    s3.upload_file(f'{model_output_path}/{name}.zip', bucket, f'{name}.zip')
+    object_acl = s3.put_object_acl(ACL='public-read', Bucket=bucket, Key=f'{name}.zip')
+    response = s3.generate_presigned_url('get_object', Params = {'Bucket': bucket, 'Key': f'{name}.zip', 'ResponseExpires': 3600})
+    return response

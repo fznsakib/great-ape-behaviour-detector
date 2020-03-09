@@ -42,7 +42,6 @@ if torch.cuda.is_available():
 else:
     DEVICE = torch.device("cpu")
 
-
 def main(args):
 
     colours = {
@@ -118,7 +117,9 @@ def main(args):
     print("==> Making predictions")
     predictions_dict = network_predictor.predict()
 
-    # # Create directory for this model's predictions
+    # Create directory for this model's predictions
+    if args.best:
+        args.name = f'{args.name}_best'
     model_output_path = f'{args.output_path}/{args.name}'
     if not os.path.exists(model_output_path):
         os.makedirs(model_output_path)
@@ -138,14 +139,15 @@ def main(args):
         shutil.rmtree(directory_path)
 
     print("==> Generating confusion matrix")
-    labels = []
-    predictions = []
-    for video in predictions_dict.keys():
-        for annotation in predictions_dict[video]:
-            labels.append(annotation['label'])
-            predictions.append(annotation['prediction'])
+    compute_confusion_matrix(predictions_dict, classes, model_output_path)
 
-    compute_confusion_matrix(labels, predictions, classes, model_output_path)
+    print("==> Creating zip file")
+    zip_videos(model_output_path, args.name)
+
+    print("==> Uploading to AWS S3")
+    response = upload_videos(model_output_path, args.name, args.bucket)
+
+    if response: print(f'Output download link: {response}')
 
     total_time = datetime.datetime.now() - start_time
     print(f'Total time: {total_time.total_seconds()}')
@@ -208,6 +210,12 @@ if __name__ == "__main__":
         default=cpu_count(),
         type=int,
         help="Number of worker processes used to load data.",
+    )
+    parser.add_argument(
+        "--bucket",
+        default="faizaanbucket",
+        type=str,
+        help="AWS S3 bucket name to upload output to.",
     )
 
     """""" """""" """""" """""" """""" """""" """""" """

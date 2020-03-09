@@ -13,6 +13,7 @@ class CNN():
         self.lr = lr
         self.start_epoch = 0
         self.accuracy = 0
+        self.device = device
         
         print ('==> Initialising temporal CNN model')
 
@@ -32,7 +33,13 @@ class CNN():
             checkpoint_file_path = f'{checkpoint_file_path}_best'
         
         if os.path.isfile(checkpoint_file_path):
-            checkpoint = torch.load(checkpoint_file_path)
+            # checkpoint = torch.load(checkpoint_file_path)
+
+            if self.device == torch.device("cuda"):
+                checkpoint = torch.load(checkpoint_file_path)
+            else:
+                checkpoint = torch.load(checkpoint_file_path, map_location=torch.device('cpu'))
+
             self.model.load_state_dict(checkpoint['state_dict'])
             self.optimiser.load_state_dict(checkpoint['optimiser'])
             self.start_epoch = checkpoint['epoch']
