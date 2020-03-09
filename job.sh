@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --job-name test_train
+#SBATCH --job-name resnet18_duration72_temporal10
 #SBATCH --gres gpu:1
-#SBATCH --partition gpu_veryshort
-#SBATCH --time 0-01:00
+#SBATCH --partition gpu
+#SBATCH --time 0-06:00
 #SBATCH --mem=64GB
-#SBATCH --output test_output
+#SBATCH --output output_18_10_5
 
 # Print some information about the job
 echo "Running on host $(hostname)"
@@ -27,10 +27,9 @@ module load cuDNN
 # Run the Python script
 # srun cd ~/great-ape-behaviour-detector
 # srun cd ..
-srun pwd
+# srun pwd
 # srun conda install pytorch torchvision cudatoolkit=10.1 -c pytorch
 # conda list
-# srun echo hi
 # srun conda init bash
 # srun conda activate conda-env
-srun python main.py --name sbatch_test
+srun python main.py --name resnet18_duration10 --activity-duration 10
