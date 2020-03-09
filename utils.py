@@ -249,6 +249,7 @@ def zip_videos(model_output_path, name):
         for i, file in enumerate(tqdm(file_paths, desc="Zipping videos", leave=False, unit="video")): 
             zip.write(file, arcname=file_names[i]) 
 
+# TEST
 def upload_videos(model_output_path, name, bucket):
      
     s3 = boto3.client('s3')
