@@ -18,7 +18,6 @@ class CNN:
 
         print("==> Initialising spatial CNN model")
 
-        # self.model = network.resnet18(pretrained=True, num_classes=num_classes, channels=channels)
         self.model = network.initialise_model(
             model_name=model_name, pretrained=True, num_classes=num_classes, channels=channels
         )
