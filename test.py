@@ -27,9 +27,10 @@ Custom Library Imports
 import models.spatial as spatial
 import models.temporal as temporal
 import controllers.evaluator as evaluator
+import utils.metrics as metrics
 from dataset.dataset import GreatApeDataset
 from utils.utils import *
-import utils.metrics as metrics
+from config_parser import ConfigParser
 
 """""" """""" """""" """""" """""" """""" """""" """
 GPU Initialisation
@@ -42,49 +43,43 @@ if torch.cuda.is_available():
 else:
     DEVICE = torch.device("cpu")
 
-def main(args):
 
-    colours = {
-        'blue': [255, 191, 0],
-        'pink': [128, 128, 240],
-        'green': [87, 139, 46],
-        'purple': [211, 0, 148],
-        'orange': [0, 140, 255],
-        'brown' : [30, 105, 210],
-        'gray' : [153, 136, 119],
-        'black': [0, 0, 0],
-        'white': [255, 255, 255],
-        'red': [0, 0, 255]
-    }
+def main(cfg):
 
-    if not args.name:
-        print("Please specify model name in order to make predictions")
-        exit()
-    
-    classes = open(args.classes).read().strip().split()
+    classes = open(cfg.paths.classes).read().strip().split()
 
     start_time = datetime.datetime.now()
 
     # Initialise spatial/temporal CNNs
-    spatial_model = spatial.CNN(lr=0.001, num_classes=len(classes), channels=3, device=DEVICE)
+    spatial_model = spatial.CNN(
+        model_name=cfg.model,
+        lr=cfg.hyperparameters.learning_rate,
+        num_classes=len(classes),
+        channels=3,
+        device=DEVICE,
+    )
     temporal_model = temporal.CNN(
-        lr=0.001, num_classes=len(classes), channels=args.optical_flow * 2, device=DEVICE,
+        model_name=cfg.model,
+        lr=cfg.hyperparameters.learning_rate,
+        num_classes=len(classes),
+        channels=cfg.dataset.temporal_stack * 2,
+        device=DEVICE,
     )
 
     # Load checkpoints
-    spatial_model.load_checkpoint(args.name, args.checkpoint_path, args.best)
-    temporal_model.load_checkpoint(args.name, args.checkpoint_path, args.best)
+    spatial_model.load_checkpoint(cfg.name, cfg.paths.checkpoints, cfg.best)
+    temporal_model.load_checkpoint(cfg.name, cfg.paths.checkpoints, cfg.best)
 
     # Initialise test dataloader
     test_dataset = GreatApeDataset(
-        mode="test",
-        sample_interval=5,
-        no_of_optical_flow=args.optical_flow,
-        activity_duration_threshold=72,
-        video_names=f"{args.dataset_path}/splits/validationdata.txt",
+        mode=cfg.mode,
+        sample_interval=cfg.dataset.sample_interval,
+        temporal_stack=cfg.dataset.temporal_stack,
+        activity_duration_threshold=cfg.dataset.activity_duration_threshold,
+        video_names=f"{cfg.paths.splits}/validationdata.txt",
         classes=classes,
-        frame_dir=f"{args.dataset_path}/frames",
-        annotations_dir=f"{args.dataset_path}/annotations",
+        frame_dir=cfg.paths.frames,
+        annotations_dir=cfg.paths.annotations,
         spatial_transform=transforms.Compose(
             [
                 transforms.Resize((224, 224)),
@@ -101,7 +96,10 @@ def main(args):
         ),
     )
     test_loader = DataLoader(
-        test_dataset, batch_size=1, shuffle=False, num_workers=args.worker_count,
+        test_dataset,
+        batch_size=cfg.dataloader.batch_size,
+        shuffle=cfg.dataloader.shuffle,
+        num_workers=cfg.dataloader.worker_count,
     )
 
     # Initialise evaluator
@@ -110,115 +108,55 @@ def main(args):
         temporal=temporal_model,
         data_loader=test_loader,
         device=DEVICE,
-        name=args.name,
+        name=cfg.name,
     )
 
-    
     print("==> Making predictions")
     predictions_dict = network_evaluator.predict()
 
     # Create directory for this model's predictions
-    if args.best:
-        args.name = f'{args.name}_best'
-    model_output_path = f'{args.output_path}/{args.name}'
+    if cfg.best:
+        cfg.name = f"{cfg.name}_best"
+    model_output_path = f"{cfg.paths.output}/{cfg.name}"
     if not os.path.exists(model_output_path):
         os.makedirs(model_output_path)
 
     print("==> Copying frames from dataset")
-    # copy_frames_to_output(model_output_path, args.dataset_path, predictions_dict.keys())
-    
+    copy_frames_to_output(model_output_path, cfg.paths.frames, predictions_dict.keys())
+
     print("==> Drawing bounding boxes")
-    draw_bounding_boxes(args, predictions_dict, classes)
-    
+    draw_bounding_boxes(
+        model_output_path,
+        cfg.paths.annotations,
+        cfg.dataset.temporal_stack,
+        predictions_dict,
+        classes,
+    )
+
     print("==> Stitching frames to create final output videos")
-    stitch_videos(model_output_path, args.dataset_path, predictions_dict)
+    stitch_videos(model_output_path, cfg.paths.frames, predictions_dict)
 
     # Delete frame directories
     for video in predictions_dict.keys():
-        directory_path = f'{args.output_path}/{args.name}/{video}'
+        directory_path = f"{model_output_path}/{video}"
         shutil.rmtree(directory_path)
 
     print("==> Generating confusion matrix")
     metrics.compute_confusion_matrix(predictions_dict, classes, model_output_path)
 
     print("==> Creating zip file")
-    zip_videos(model_output_path, args.name)
+    zip_videos(model_output_path, cfg.name)
 
     print("==> Uploading to AWS S3")
-    response = upload_videos(model_output_path, args.name, args.bucket)
+    response = upload_videos(model_output_path, cfg.name, cfg.bucket)
 
-    if response: print(f'Output download link: {response}')
+    if response:
+        print(f"Output download link: {response}")
 
     total_time = datetime.datetime.now() - start_time
-    print(f'Total time: {total_time.total_seconds()}')
+    print(f"Total time: {total_time.total_seconds()}")
 
 
 if __name__ == "__main__":
-    
-    """""" """""" """""" """""" """""" """""" """""" """
-    Argument Parser
-    """ """""" """""" """""" """""" """""" """""" """"""
-
-    default_dataset_dir = Path(f"{os.getcwd()}/../scratch/data")
-    default_output_dir = Path(f"{os.getcwd()}/../scratch/output")
-    default_checkpoints_dir = Path(f"{os.getcwd()}/../scratch/checkpoints")
-    default_classes_dir = Path(f"{default_dataset_dir}/classes.txt")
-
-    parser = argparse.ArgumentParser(
-        description="Perform behaviour recognition on great ape videos.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-
-    # Model to use for prediction
-    parser.add_argument(
-        "--name", default="", type=str, help="Toggle model checkpointing by providing name"
-    )
-
-    parser.add_argument(
-        "--best", action="store_true", help="Load the checkpoint with the best accuracy for the model"
-    )
-
-    parser.add_argument(
-        "--optical-flow",
-        default=5,
-        type=int,
-        help="Number of frames of optical flow to provide the temporal stream",
-    )
-
-    # Paths
-    parser.add_argument(
-        "--dataset-path", default=default_dataset_dir, type=Path, help="Path to root of dataset"
-    )
-    parser.add_argument(
-        "--checkpoint-path",
-        default=default_checkpoints_dir,
-        type=Path,
-        help="Path to root of saved model checkpoints",
-    )
-    parser.add_argument("--classes", default=default_classes_dir, type=Path, help="Path to classes.txt")
-    parser.add_argument(
-        "--output-path",
-        default=default_output_dir,
-        type=Path,
-        help="Path to output videos with prediction bounding boxes",
-    )
-
-    # Miscellaneous
-    parser.add_argument(
-        "-j",
-        "--worker-count",
-        default=cpu_count(),
-        type=int,
-        help="Number of worker processes used to load data.",
-    )
-    parser.add_argument(
-        "--bucket",
-        default="faizaanbucket",
-        type=str,
-        help="AWS S3 bucket name to upload output to.",
-    )
-
-    """""" """""" """""" """""" """""" """""" """""" """
-    Call main()
-    """ """""" """""" """""" """""" """""" """""" """"""
-    main(parser.parse_args())
+    cfg = ConfigParser().config
+    main(cfg)

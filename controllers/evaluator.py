@@ -12,6 +12,7 @@ from tabulate import tabulate
 import utils.metrics as metrics
 from utils.utils import *
 
+
 class Evaluator:
     def __init__(
         self,
@@ -30,7 +31,7 @@ class Evaluator:
 
     def predict(self):
 
-        # Turn on evaluation for networkss 
+        # Turn on evaluation for networkss
         self.spatial.model.eval()
         self.temporal.model.eval()
 
@@ -44,9 +45,9 @@ class Evaluator:
                 temporal_data = temporal_data.to(self.device)
                 label = label.to(self.device)
 
-                ape_id = metadata['ape_id'][0]
-                start_frame = metadata['start_frame'][0]
-                video = metadata['video'][0]
+                ape_id = metadata["ape_id"][0]
+                start_frame = metadata["start_frame"][0]
+                video = metadata["video"][0]
 
                 spatial_logits = self.spatial.model(spatial_data)
                 temporal_logits = self.temporal.model(temporal_data)
@@ -59,11 +60,13 @@ class Evaluator:
                 if video not in self.predictions.keys():
                     self.predictions[video] = []
 
-                self.predictions[video].append({
-                    "ape_id": ape_id.item(),
-                    "label": label.item(),
-                    "prediction": prediction,
-                    "start_frame": start_frame.item()
-                })
+                self.predictions[video].append(
+                    {
+                        "ape_id": ape_id.item(),
+                        "label": label.item(),
+                        "prediction": prediction,
+                        "start_frame": start_frame.item(),
+                    }
+                )
 
         return self.predictions
