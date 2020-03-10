@@ -12,16 +12,18 @@ def average_fusion(spatial_logits, temporal_logits):
 
     return fusion_logits
 
+
 # Compute the top1 accuracy of predictions made by the network
 def compute_accuracy(labels, predictions):
     assert len(labels) == len(predictions)
-    
+
     correct_predictions = 0
     for i, prediction in enumerate(predictions):
         if prediction == labels[i]:
             correct_predictions += 1
 
     return float(correct_predictions) / len(predictions)
+
 
 # Compute the given top k accuracy of predictions made by the network
 def compute_topk_accuracy(output, target, topk=(1,)):
@@ -40,8 +42,10 @@ def compute_topk_accuracy(output, target, topk=(1,)):
         res.append(correct_k.mul_(100.0 / batch_size))
     return res
 
+
 def compute_class_accuracy():
     return 0
+
 
 # Compute confusion matrix from labels and predictions
 def compute_confusion_matrix(predictions_dict, classes, output_path):
@@ -50,55 +54,62 @@ def compute_confusion_matrix(predictions_dict, classes, output_path):
     predictions = []
     for video in predictions_dict.keys():
         for annotation in predictions_dict[video]:
-            labels.append(annotation['label'])
-            predictions.append(annotation['prediction'])
+            labels.append(annotation["label"])
+            predictions.append(annotation["prediction"])
 
     existing_classes = []
 
     for i in range(0, len(classes)):
         if i in set(labels):
             existing_classes.append(classes[i])
- 
+
     # Compute confusion matrix
     cnf_matrix = confusion_matrix(labels, predictions)
     np.set_printoptions(precision=2)
 
     # Plot normalized confusion matrix
-    plt.figure(figsize=(20,20))
-    plot_confusion_matrix(cnf_matrix, classes=existing_classes, normalise=True, title='Normalised confusion matrix')
+    plt.figure(figsize=(20, 20))
+    plot_confusion_matrix(
+        cnf_matrix, classes=existing_classes, normalise=True, title="Normalised confusion matrix"
+    )
 
-    plt.savefig(f'{output_path}/confusion_matrix.png', bbox_inches = "tight")
+    plt.savefig(f"{output_path}/confusion_matrix.png", bbox_inches="tight")
     # plt.show()
 
 
 # Plots the confusion matrix
-def plot_confusion_matrix(cm, classes, normalise=False, title='Confusion matrix', cmap=plt.cm.Blues):
-    
+def plot_confusion_matrix(
+    cm, classes, normalise=False, title="Confusion matrix", cmap=plt.cm.Blues
+):
+
     if normalise:
-        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        cm = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
     #     print("Normalised Confusion Matrix")
     # else:
     #     print('Unnormalised Confusion Matrix')
 
     # print(cm)
 
-    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.imshow(cm, interpolation="nearest", cmap=cmap)
     plt.title(title, fontsize=30, pad=30)
     plt.colorbar(fraction=0.046, pad=0.04)
     tick_marks = np.arange(len(classes))
     plt.xticks(tick_marks, classes, rotation=45, fontsize=14)
     plt.yticks(tick_marks, classes, fontsize=14)
 
-    fmt = '.2f' if normalise else 'd'
-    thresh = cm.max() / 2.
+    fmt = ".2f" if normalise else "d"
+    thresh = cm.max() / 2.0
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        plt.text(j, i, format(cm[i, j], fmt),
-                 horizontalalignment="center",
-                 color="white" if cm[i, j] > thresh else "black",
-                 fontsize=20)
-
+        plt.text(
+            j,
+            i,
+            format(cm[i, j], fmt),
+            horizontalalignment="center",
+            color="white" if cm[i, j] > thresh else "black",
+            fontsize=20,
+        )
 
     plt.tight_layout()
     plt.autoscale()
-    plt.ylabel('True label', fontsize=20)
-    plt.xlabel('Predicted label', fontsize=20)
+    plt.ylabel("True label", fontsize=20)
+    plt.xlabel("Predicted label", fontsize=20)
