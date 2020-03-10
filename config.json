@@ -1,0 +1,38 @@
+{
+    "name": "resnet18",
+    "mode": "train",
+    "resume": false,
+    "best" : true,
+    "model": "resnet18",
+    "log": true,
+    "bucket": "faizaanbucket",
+    "hyperparameters": {
+        "epochs": 50,
+        "learning_rate": 0.001,
+        "sgd_momentum": 0.9
+    },
+    "paths": {
+        "annotations": "../scratch/data/annotations",
+        "checkpoints": "../scratch/checkpoints",
+        "classes": "../scratch/data/classes.txt",
+        "frames": "../scratch/data/frames",
+        "logs": "../scratch/logs",
+        "output": "../scratch/output",
+        "splits": "../scratch/data/splits"
+    },
+    "dataset": {
+        "sample_interval": 10,
+        "temporal_stack": 5,
+        "activity_duration_threshold": 72
+    },
+    "dataloader": {
+        "batch_size": 32,
+        "shuffle": false,
+        "worker_count": 1
+    },
+    "frequencies": {
+        "log": 1,
+        "print": 1,
+        "validation": 1
+    }
+}
