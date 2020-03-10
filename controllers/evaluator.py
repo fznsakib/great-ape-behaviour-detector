@@ -8,9 +8,12 @@ from torch.utils.tensorboard import SummaryWriter
 from pathlib import Path
 from tqdm import tqdm
 from tabulate import tabulate
-from utils import *
 
-class Predictor:
+import utils.metrics as metrics
+from utils.utils import *
+
+
+class Evaluator:
     def __init__(
         self,
         spatial: nn.Module,
@@ -28,7 +31,7 @@ class Predictor:
 
     def predict(self):
 
-        # Turn on evaluation for networkss 
+        # Turn on evaluation for networkss
         self.spatial.model.eval()
         self.temporal.model.eval()
 
@@ -42,26 +45,28 @@ class Predictor:
                 temporal_data = temporal_data.to(self.device)
                 label = label.to(self.device)
 
-                ape_id = metadata['ape_id'][0]
-                start_frame = metadata['start_frame'][0]
-                video = metadata['video'][0]
+                ape_id = metadata["ape_id"][0]
+                start_frame = metadata["start_frame"][0]
+                video = metadata["video"][0]
 
                 spatial_logits = self.spatial.model(spatial_data)
                 temporal_logits = self.temporal.model(temporal_data)
 
                 # Accumulate predictions against ground truth labels
-                fusion_logits = average_fusion(spatial_logits, temporal_logits)
+                fusion_logits = metrics.average_fusion(spatial_logits, temporal_logits)
                 prediction = fusion_logits.argmax().item()
 
                 # Insert results to dictionary
                 if video not in self.predictions.keys():
                     self.predictions[video] = []
 
-                self.predictions[video].append({
-                    "ape_id": ape_id.item(),
-                    "label": label.item(),
-                    "prediction": prediction,
-                    "start_frame": start_frame.item()
-                })
+                self.predictions[video].append(
+                    {
+                        "ape_id": ape_id.item(),
+                        "label": label.item(),
+                        "prediction": prediction,
+                        "start_frame": start_frame.item(),
+                    }
+                )
 
         return self.predictions
