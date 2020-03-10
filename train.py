@@ -188,8 +188,6 @@ def main(cfg):
         )
     )
 
-    exit()
-
     # Initialise CNNs for spatial and temporal streams
     spatial_model = spatial.CNN(
         model_name=cfg.model,
