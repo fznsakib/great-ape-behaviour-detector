@@ -6,6 +6,7 @@ from torch.utils.tensorboard import SummaryWriter
 from pathlib import Path
 from tqdm import tqdm
 from tabulate import tabulate
+from statistics import mean
 
 import utils.metrics as metrics
 from utils.utils import *
@@ -190,7 +191,7 @@ class Trainer:
 
         print("==> Validation Stage")
 
-        results = {"labels": [], "logits": []}
+        results = {"labels": [], "logits": [], "predictions": []}
         total_spatial_loss = 0
         total_temporal_loss = 0
 
@@ -222,9 +223,10 @@ class Trainer:
                 fusion_logits = metrics.average_fusion(spatial_logits, temporal_logits)
 
                 # Populate dictionary with logits and labels of all samples in this batch
-                for i in range(len(labels)):
-                    results["labels"].append(labels[i].item())
-                    results["logits"].append(fusion_logits[i].tolist())
+                for j in range(len(labels)):
+                    results["labels"].append(labels[j].item())
+                    results["logits"].append(fusion_logits[j].tolist())
+                    results["predictions"].append(np.argmax(fusion_logits[j]).item())
 
         # Get accuracy by checking for correct predictions across all predictions
         top1, top3 = metrics.compute_topk_accuracy(
@@ -232,7 +234,8 @@ class Trainer:
         )
 
         # Get per class accuracies and sort by label value (0...9)
-        per_class_accuracy = metrics.compute_class_accuracy()
+        class_accuracy = metrics.compute_class_accuracy(results["labels"], results["predictions"])
+        class_accuracy_average = mean(class_accuracy.values())
 
         # Get average loss for each stream
         average_spatial_loss = total_spatial_loss / len(self.test_loader)
@@ -240,19 +243,21 @@ class Trainer:
 
         # Log metrics
         if self.log:
-            self.summary_writer.add_scalars("top1_accuracy", {"validation": top1.item()}, self.step)
-            self.summary_writer.add_scalars("top3_accuracy", {"validation": top3.item()}, self.step)
             self.summary_writer.add_scalars(
                 "spatial_loss", {"validation": average_spatial_loss}, self.step
             )
             self.summary_writer.add_scalars(
                 "temporal_loss", {"validation": average_temporal_loss}, self.step
             )
+            self.summary_writer.add_scalars("average_class_accuracy", {"validation": class_accuracy_average}, self.step)
+            self.summary_writer.add_scalars("top1_accuracy", {"validation": top1.item()}, self.step)
+            self.summary_writer.add_scalars("top3_accuracy", {"validation": top3.item()}, self.step)
 
         print("==> Results")
         validation_results = [
             ["Average Spatial Loss:", f"{average_spatial_loss:.5f}"],
             ["Average Temporal Loss:", f"{average_temporal_loss:.5f}"],
+            ["Average Class Accuracy:", f"{class_accuracy_average:2f}"],
             ["Top1 Accuracy:", f"{top1.item():.2f}"],
             ["Top3 Accuracy:", f"{top3.item():.2f}"],
         ]
