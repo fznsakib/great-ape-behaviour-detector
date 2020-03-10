@@ -96,8 +96,8 @@ def main(cfg):
     print("==> Initialising validation dataset")
 
     test_dataset = GreatApeDataset(
-        mode=cfg.mode,
-        sample_interval=cfg.dataset.sample_interval,
+        mode="validation",
+        sample_interval=5,
         temporal_stack=cfg.dataset.temporal_stack,
         activity_duration_threshold=cfg.dataset.activity_duration_threshold,
         video_names=f"{cfg.paths.splits}/validationdata.txt",
@@ -126,6 +126,9 @@ def main(cfg):
         num_workers=cfg.dataloader.worker_count,
     )
 
+    train_class_samples = train_dataset.get_no_of_samples_by_class()
+    test_class_samples = test_dataset.get_no_of_samples_by_class()
+
     print("==> Dataset properties")
 
     dataset_argument_table = [
@@ -134,15 +137,53 @@ def main(cfg):
         ["Activity Duration Threshold", cfg.dataset.activity_duration_threshold,],
     ]
 
-    dataset_table = [
-        ["Train", train_dataset.__len__()],
-        ["Validation", test_dataset.__len__()],
+    dataset_samples_table = [
+        [
+            "Train",
+            train_dataset.__len__(),
+            train_class_samples["camera_interaction"],
+            train_class_samples["climbing_down"],
+            train_class_samples["climbing_up"],
+            train_class_samples["hanging"],
+            train_class_samples["running"],
+            train_class_samples["sitting"],
+            train_class_samples["sitting_on_back"],
+            train_class_samples["standing"],
+            train_class_samples["walking"],
+        ],
+        [
+            "Validation",
+            test_dataset.__len__(),
+            test_class_samples["camera_interaction"],
+            test_class_samples["climbing_down"],
+            test_class_samples["climbing_up"],
+            test_class_samples["hanging"],
+            test_class_samples["running"],
+            test_class_samples["sitting"],
+            test_class_samples["sitting_on_back"],
+            test_class_samples["standing"],
+            test_class_samples["walking"],
+        ],
     ]
 
-    print(tabulate(dataset_argument_table, headers=["Parameter", "Value"], tablefmt="fancy_grid",))
+    print(tabulate(dataset_argument_table, headers=["Parameter", "Value"], tablefmt="fancy_grid"))
     print(
         tabulate(
-            dataset_table, headers=["Dataset Type", "Number of Samples"], tablefmt="fancy_grid",
+            dataset_samples_table,
+            headers=[
+                "Type",
+                "Number of Samples",
+                "camera_interaction",
+                "climbing_down",
+                "climbing_up",
+                "hanging",
+                "running",
+                "sitting",
+                "sitting_on_back",
+                "standing",
+                "walking",
+            ],
+            tablefmt="fancy_grid",
         )
     )
 
@@ -168,6 +209,7 @@ def main(cfg):
         temporal_model.load_checkpoint(cfg.name, cfg.paths.checkpoints)
 
     # Initialise log writing
+    summary_writer = None
     if cfg.log:
         log_dir = f"{cfg.paths.logs}/{cfg.name}"
         print(f"==> Writing logs to {os.path.basename(log_dir)}")

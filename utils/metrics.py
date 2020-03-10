@@ -26,15 +26,15 @@ def compute_accuracy(labels, predictions):
 
 
 # Compute the given top k accuracy of predictions made by the network
-def compute_topk_accuracy(output, target, topk=(1,)):
+def compute_topk_accuracy(output, labels, topk=(1,)):
     """Computes the precision@k for the specified values of k"""
     maxk = max(topk)
-    batch_size = target.size(0)
+    batch_size = labels.size(0)
 
-    _, pred = output.topk(maxk, 1, True, True)
-    pred = pred.t().cpu()
-    target = target.cpu()
-    correct = pred.eq(target.view(1, -1).expand_as(pred))
+    _, predictions = output.topk(maxk, 1, True, True)
+    predictions = predictions.t().cpu()
+    labels = labels.cpu()
+    correct = predictions.eq(labels.view(1, -1).expand_as(predictions))
 
     res = []
     for k in topk:
@@ -43,8 +43,27 @@ def compute_topk_accuracy(output, target, topk=(1,)):
     return res
 
 
-def compute_class_accuracy():
-    return 0
+def compute_class_accuracy(labels, predictions):
+
+    class_accuracies = {}
+
+    for i, label in enumerate(labels):
+        if label not in class_accuracies.keys():
+            class_accuracies[label] = []
+
+        # Append 1 to label list if right prediction, otherwise append 0
+        if label == predictions[i]:
+            class_accuracies[label].append(1)
+        else:
+            class_accuracies[label].append(0)
+
+    # Each label now has a list of 1s and 0s representing right/wrong predictions
+    # Sum the list and divide by number of predictions to get the accuracy of the class
+    for label in class_accuracies.keys():
+        accuracy_count = class_accuracies[label]
+        class_accuracies[label] = sum(accuracy_count)/len(accuracy_count)
+
+    return class_accuracies
 
 
 # Compute confusion matrix from labels and predictions
@@ -113,3 +132,4 @@ def plot_confusion_matrix(
     plt.autoscale()
     plt.ylabel("True label", fontsize=20)
     plt.xlabel("Predicted label", fontsize=20)
+
