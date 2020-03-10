@@ -61,7 +61,7 @@ def compute_class_accuracy(labels, predictions):
     # Sum the list and divide by number of predictions to get the accuracy of the class
     for label in class_accuracies.keys():
         accuracy_count = class_accuracies[label]
-        class_accuracies[label] = sum(accuracy_count)/len(accuracy_count)
+        class_accuracies[label] = sum(accuracy_count) / len(accuracy_count)
 
     return class_accuracies
 
@@ -132,4 +132,3 @@ def plot_confusion_matrix(
     plt.autoscale()
     plt.ylabel("True label", fontsize=20)
     plt.xlabel("Predicted label", fontsize=20)
-

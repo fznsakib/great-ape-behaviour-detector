@@ -57,12 +57,12 @@ class GreatApeDataset(torch.utils.data.Dataset):
         self.temporal_transform = temporal_transform
         self.samples = {}
         self.samples_by_class = {}
-        
-        if self.mode == 'train':
+
+        if self.mode == "train":
             self.initialise_dataset()
-        elif self.mode == 'test' or self.mode == 'validation':
+        elif self.mode == "test" or self.mode == "validation":
             self.initialise_test_dataset()
-        
+
         self.initialise_samples_by_class()
 
     def __len__(self):
@@ -89,13 +89,15 @@ class GreatApeDataset(torch.utils.data.Dataset):
         # Get ape and its coordinates
         ape = get_ape_by_id(self.annotations_dir, video, spatial_frame_no, ape_id)
         coordinates = get_ape_coordinates(ape)
-        
+
         # Crop around ape and apply transforms
-        spatial_image = spatial_image.crop((coordinates[0], coordinates[1], coordinates[2], coordinates[3]))
+        spatial_image = spatial_image.crop(
+            (coordinates[0], coordinates[1], coordinates[2], coordinates[3])
+        )
 
         spatial_data = self.spatial_transform(spatial_image)
         spatial_image.close()
-        
+
         """
         Temporal Data
         """
@@ -133,11 +135,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
         """
         Other data
         """
-        metadata = {
-            'ape_id': ape_id,
-            'start_frame': start_frame,
-            'video': video
-        }
+        metadata = {"ape_id": ape_id, "start_frame": start_frame, "video": video}
 
         return spatial_data, temporal_data, label, metadata
 
@@ -148,7 +146,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
         """
 
         # Go through every video in dataset
-        for video in tqdm(self.video_names, desc=f'Initialising {self.mode} dataset', leave=False):
+        for video in tqdm(self.video_names, desc=f"Initialising {self.mode} dataset", leave=False):
             # Count how many apes are present in the video
             no_of_apes = get_no_of_apes(self.annotations_dir, video)
 
@@ -175,7 +173,9 @@ class GreatApeDataset(torch.utils.data.Dataset):
                         valid_frames = 1
 
                         for look_ahead_frame_no in range(frame_no + 1, no_of_frames + 1):
-                            ape = get_ape_by_id(self.annotations_dir, video, look_ahead_frame_no, current_ape_id)
+                            ape = get_ape_by_id(
+                                self.annotations_dir, video, look_ahead_frame_no, current_ape_id
+                            )
 
                             if (ape) and (ape.find("activity").text == current_activity):
                                 valid_frames += 1
@@ -189,15 +189,23 @@ class GreatApeDataset(torch.utils.data.Dataset):
 
                         # If this sample meets the required number of frames, break it down into smaller samples with the given interval
                         last_valid_frame = frame_no + valid_frames
-                        for valid_frame_no in range(frame_no, last_valid_frame, self.sample_interval):
+                        for valid_frame_no in range(
+                            frame_no, last_valid_frame, self.sample_interval
+                        ):
 
                             # For the last valid sample, ensure that there are enough temporal frames with the ape following it
                             if (valid_frame_no + self.sample_interval) >= last_valid_frame:
                                 correct_activity = False
                                 for temporal_frame in range(valid_frame_no, self.temporal_stack):
-                                    ape = get_ape_by_id(self.annotations_dir, video, temporal_frame, current_ape_id)
+                                    ape = get_ape_by_id(
+                                        self.annotations_dir, video, temporal_frame, current_ape_id
+                                    )
                                     ape_activity = get_activity(ape)
-                                    if (not ape) or (ape_activity != current_activity) or (temporal_frame > no_of_frames):
+                                    if (
+                                        (not ape)
+                                        or (ape_activity != current_activity)
+                                        or (temporal_frame > no_of_frames)
+                                    ):
                                         correct_activity = False
                                         break
                                 if correct_activity == False:
@@ -220,7 +228,6 @@ class GreatApeDataset(torch.utils.data.Dataset):
 
                         frame_no = last_valid_frame
 
-
     def initialise_test_dataset(self):
         """
         Creates a dictionary which includes all spatial + temporal samples from the dataset.
@@ -229,8 +236,8 @@ class GreatApeDataset(torch.utils.data.Dataset):
         """
 
         # Go through every video in dataset
-        for video in tqdm(self.video_names, desc=f'Initialising {self.mode} dataset', leave=False):
-        # for video in tqdm(video_names, desc=f'Initialising {self.mode} dataset'):
+        for video in tqdm(self.video_names, desc=f"Initialising {self.mode} dataset", leave=False):
+            # for video in tqdm(video_names, desc=f'Initialising {self.mode} dataset'):
             # Count how many apes are present in the video
             no_of_apes = get_no_of_apes(self.annotations_dir, video)
             # print(f'video: {video}, no_of_apes: {no_of_apes}')
@@ -257,26 +264,28 @@ class GreatApeDataset(torch.utils.data.Dataset):
 
                         # Check that this ape exists for the next n frames
                         for look_ahead_frame_no in range(frame_no, frame_no + self.sample_interval):
-                            ape = get_ape_by_id(self.annotations_dir, video, look_ahead_frame_no, current_ape_id)
+                            ape = get_ape_by_id(
+                                self.annotations_dir, video, look_ahead_frame_no, current_ape_id
+                            )
 
                             if ape:
                                 activities.append(ape.find("activity").text)
                             else:
                                 insufficient_apes = True
                                 break
-                        
+
                         # If the ape is not present for enough consecutive frames, then move on
                         if insufficient_apes:
                             # frame_no = look_ahead_frame_no
                             frame_no += self.sample_interval
                             continue
-                        
+
                         # Get majority activity
                         activity = mode(activities)
-                        
+
                         # Check if there are enough frames left
                         if (no_of_frames - frame_no) >= self.temporal_stack:
-                            
+
                             # Insert sample
                             if video not in self.samples.keys():
                                 self.samples[video] = []
@@ -288,7 +297,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                                     "start_frame": frame_no,
                                 }
                             )
-                        
+
                         frame_no += self.sample_interval
 
         return
@@ -298,12 +307,14 @@ class GreatApeDataset(torch.utils.data.Dataset):
         Creates a dictionary which includes all spatial + temporal samples from the dataset
         with the classes as keys.
         """
-        for class_name in (self.classes):
+        for class_name in self.classes:
             self.samples_by_class[class_name] = []
 
         for video in self.samples.keys():
             for annotation in self.samples[video]:
-                self.samples_by_class[annotation['activity']].append(annotation)
+                new_annotation = annotation
+                new_annotation["video"] = video
+                self.samples_by_class[annotation["activity"]].append(new_annotation)
 
     def get_no_of_samples_by_class(self):
         """
@@ -313,12 +324,24 @@ class GreatApeDataset(torch.utils.data.Dataset):
 
         for class_name in self.classes:
             samples_dict[class_name] = 0
-            
+
         for class_name in self.samples_by_class.keys():
             samples_dict[class_name] = len(self.samples_by_class[class_name])
 
         return samples_dict
 
+    def get_videos_by_class(self):
+        samples_dict = {}
+
+        for class_name in self.classes:
+            samples_dict[class_name] = []
+
+        for class_name in self.samples_by_class:
+            for annotation in self.samples_by_class[class_name]:
+                if annotation["video"] not in samples_dict[class_name]:
+                    samples_dict[class_name].append(annotation["video"])
+
+        return samples_dict
 
 
 if __name__ == "__main__":
@@ -358,4 +381,3 @@ if __name__ == "__main__":
         spatial_transform,
         temporal_transform,
     )
-    

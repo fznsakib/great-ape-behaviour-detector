@@ -249,7 +249,9 @@ class Trainer:
             self.summary_writer.add_scalars(
                 "temporal_loss", {"validation": average_temporal_loss}, self.step
             )
-            self.summary_writer.add_scalars("average_class_accuracy", {"validation": class_accuracy_average}, self.step)
+            self.summary_writer.add_scalars(
+                "average_class_accuracy", {"validation": class_accuracy_average}, self.step
+            )
             self.summary_writer.add_scalars("top1_accuracy", {"validation": top1.item()}, self.step)
             self.summary_writer.add_scalars("top3_accuracy", {"validation": top3.item()}, self.step)
 
