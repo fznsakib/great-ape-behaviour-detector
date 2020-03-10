@@ -23,7 +23,7 @@ import models.temporal as temporal
 import controllers.trainer as trainer
 from dataset.dataset import GreatApeDataset
 from utils.utils import *
-from config_parser import ConfigParser
+from utils.config_parser import ConfigParser
 
 """""" """""" """""" """""" """""" """""" """""" """
 GPU Initialisation
@@ -50,6 +50,7 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 
+import random
 
 """""" """""" """""" """""" """""" """""" """""" """
 Main
@@ -129,6 +130,24 @@ def main(cfg):
     train_class_samples = train_dataset.get_no_of_samples_by_class()
     test_class_samples = test_dataset.get_no_of_samples_by_class()
 
+    # print(train_dataset.get_videos_by_class())
+    # print(test_dataset.get_videos_by_class())
+
+    train_s = train_dataset.get_videos_by_class()
+    test_s = test_dataset.get_videos_by_class()
+
+    # print('train -> test swaps')
+    # print(random.sample(train_s['camera_interaction'], k=1))
+    # print(random.sample(train_s['hanging'], k=2))
+    # print(random.sample(train_s['sitting_on_back'], k=1))
+
+    # print('test -> train swaps')
+    # print(random.sample(test_s['walking'], k=2))
+    # print(random.sample(test_s['sitting'], k=1))
+    # print(random.sample(test_s['standing'], k=1))
+
+    # exit()
+
     print("==> Dataset properties")
 
     dataset_argument_table = [
@@ -186,6 +205,8 @@ def main(cfg):
             tablefmt="fancy_grid",
         )
     )
+
+    exit()
 
     # Initialise CNNs for spatial and temporal streams
     spatial_model = spatial.CNN(

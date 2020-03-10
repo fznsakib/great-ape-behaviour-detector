@@ -30,7 +30,7 @@ import controllers.evaluator as evaluator
 import utils.metrics as metrics
 from dataset.dataset import GreatApeDataset
 from utils.utils import *
-from config_parser import ConfigParser
+from utils.config_parser import ConfigParser
 
 """""" """""" """""" """""" """""" """""" """""" """
 GPU Initialisation
