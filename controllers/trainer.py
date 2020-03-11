@@ -273,15 +273,15 @@ class Trainer:
             ],
             [
                 "Accuracy",
-                class_accuracy[0],
-                class_accuracy[1],
-                class_accuracy[2],
-                class_accuracy[3],
-                class_accuracy[4],
-                class_accuracy[5],
-                class_accuracy[6],
-                class_accuracy[7],
-                class_accuracy[8]
+                f'{class_accuracy[0]:2.2f}'',
+                f'{class_accuracy[1]:2.2f}',
+                f'{class_accuracy[2]:2.2f}',
+                f'{class_accuracy[3]:2.2f}',
+                f'{class_accuracy[4]:2.2f}',
+                f'{class_accuracy[5]:2.2f}',
+                f'{class_accuracy[6]:2.2f}',
+                f'{class_accuracy[7]:2.2f}',
+                f'{class_accuracy[8]:2.2f}'
             ]
         ]
         
