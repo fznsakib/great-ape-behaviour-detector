@@ -55,6 +55,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
         self.annotations_dir = annotations_dir
         self.spatial_transform = spatial_transform
         self.temporal_transform = temporal_transform
+        self.labels = 0
         self.samples = {}
         self.samples_by_class = {}
 
@@ -64,6 +65,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
             self.initialise_test_dataset()
 
         self.initialise_samples_by_class()
+        self.initialise_labels()
 
     def __len__(self):
         # If the length of the dataset has not yet been calculated, then do so and store it
@@ -217,6 +219,9 @@ class GreatApeDataset(torch.utils.data.Dataset):
                                 # Insert sample
                                 if video not in self.samples.keys():
                                     self.samples[video] = []
+                                    
+                                # Keep count of number of labels
+                                self.labels += 1
 
                                 self.samples[video].append(
                                     {
@@ -289,6 +294,9 @@ class GreatApeDataset(torch.utils.data.Dataset):
                             # Insert sample
                             if video not in self.samples.keys():
                                 self.samples[video] = []
+                                
+                            # Keep count of number of labels
+                            self.labels += 1
 
                             self.samples[video].append(
                                 {
@@ -320,15 +328,17 @@ class GreatApeDataset(torch.utils.data.Dataset):
         """
         Returns a dictionary specifying the number of samples available per class.
         """
-        samples_dict = {}
+        # samples_dict = {}
+        
+        samples_by_class = np.unique(self.labels, return_counts=True)[1]
 
-        for class_name in self.classes:
-            samples_dict[class_name] = 0
+        # for class_name in self.classes:
+        #     samples_dict[class_name] = 0
 
-        for class_name in self.samples_by_class.keys():
-            samples_dict[class_name] = len(self.samples_by_class[class_name])
+        # for class_name in self.samples_by_class.keys():
+        #     samples_dict[class_name] = len(self.samples_by_class[class_name])
 
-        return samples_dict
+        return samples_by_class
 
     def get_videos_by_class(self):
         samples_dict = {}
@@ -342,6 +352,18 @@ class GreatApeDataset(torch.utils.data.Dataset):
                     samples_dict[class_name].append(annotation["video"])
 
         return samples_dict
+
+    def initialise_labels(self):
+        labels = np.zeros(self.labels, dtype = int)
+        i = 0
+        
+        for video in self.samples:
+            for annotation in self.samples[video]:
+                label = self.classes.index(annotation['activity'])
+                labels[i] = label
+                i += 1
+                
+        self.labels = labels
 
 
 if __name__ == "__main__":

@@ -1,9 +1,9 @@
 {
-    "name": "resnet18",
+    "name": "vgg16_balanced_sampling_TEST",
     "mode": "train",
     "resume": false,
-    "best" : true,
-    "model": "resnet18",
+    "best" : false,
+    "model": "vgg16",
     "log": true,
     "bucket": "faizaanbucket",
     "hyperparameters": {
