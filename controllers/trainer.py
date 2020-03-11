@@ -1,6 +1,7 @@
 import time
 import torch
 import torch.nn as nn
+import numpy as np
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from pathlib import Path
@@ -60,6 +61,7 @@ class Trainer:
             data_load_start_time = time.time()
 
             for i, (spatial_data, temporal_data, labels, metadata) in enumerate(self.train_loader):
+                
                 # Set gradients to zero
                 self.spatial.optimiser.zero_grad()
                 self.temporal.optimiser.zero_grad()
@@ -255,7 +257,37 @@ class Trainer:
             self.summary_writer.add_scalars("top1_accuracy", {"validation": top1.item()}, self.step)
             self.summary_writer.add_scalars("top3_accuracy", {"validation": top3.item()}, self.step)
 
-        print("==> Results")
+        print("==> Per Class Results")
+        per_class_results = [
+            [
+                "Class",
+                "camera_interaction",
+                "climbing_down",
+                "climbing_up",
+                "hanging",
+                "running",
+                "sitting",
+                "sitting_on_back",
+                "standing",
+                "walking"
+            ],
+            [
+                "Accuracy",
+                class_accuracy[0],
+                class_accuracy[1],
+                class_accuracy[2],
+                class_accuracy[3],
+                class_accuracy[4],
+                class_accuracy[5],
+                class_accuracy[6],
+                class_accuracy[7],
+                class_accuracy[8]
+            ]
+        ]
+        
+        print(tabulate(per_class_results, tablefmt="fancy_grid"))
+        
+        print("==> Overall Results")
         validation_results = [
             ["Average Spatial Loss:", f"{average_spatial_loss:.5f}"],
             ["Average Temporal Loss:", f"{average_temporal_loss:.5f}"],
