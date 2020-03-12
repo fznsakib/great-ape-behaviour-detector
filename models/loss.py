@@ -3,6 +3,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
+def initialise_loss(loss):
+    loss_initialisers = {
+        "focal": FocalLoss(),
+        "cross_entropy": nn.CrossEntropyLoss()
+    }
+    
+    return loss_initialisers[loss]
+    
 class FocalLoss(nn.Module):
     def __init__(self, gamma=0, alpha=None, size_average=True):
         super(FocalLoss, self).__init__()

@@ -89,13 +89,18 @@ def main(cfg):
         ),
         device=DEVICE
     )
+    
+    if cfg.dataloader.sampler:
+        sampler=BalancedBatchSampler(train_dataset, train_dataset.labels)
+    else:
+        sampler=None
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=cfg.dataloader.batch_size,
         shuffle=cfg.dataloader.shuffle,
         num_workers=cfg.dataloader.worker_count,
-        sampler=BalancedBatchSampler(train_dataset, train_dataset.labels)
+        sampler=sampler
     )
 
     print("==> Initialising validation dataset")
@@ -196,6 +201,7 @@ def main(cfg):
     # Initialise CNNs for spatial and temporal streams
     spatial_model = spatial.CNN(
         model_name=cfg.model,
+        loss=cfg.loss,
         lr=cfg.hyperparameters.learning_rate,
         num_classes=len(classes),
         channels=3,
@@ -203,6 +209,7 @@ def main(cfg):
     )
     temporal_model = temporal.CNN(
         model_name=cfg.model,
+        loss=cfg.loss,
         lr=cfg.hyperparameters.learning_rate,
         num_classes=len(classes),
         channels=cfg.dataset.temporal_stack * 2,

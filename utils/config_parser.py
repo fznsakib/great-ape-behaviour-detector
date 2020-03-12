@@ -68,6 +68,9 @@ class ConfigParser:
         self.parser.add_argument(
             "--model", default="resnet18", type=str, help="Type of pretrained model to load",
         )
+        self.parser.add_argument(
+            "--loss", default="cross_entropy", type=str, help="Loss function to use",
+        )
 
         self.parser.add_argument(
             "--bucket",
@@ -153,6 +156,9 @@ class ConfigParser:
         )
         self.parser.add_argument(
             "--dataloader.worker_count", default=1, type=int, help="Number of workers to load data",
+        )
+        self.parser.add_argument(
+            "--dataloader.sampler", default=False, type=bool, help="Use balanced batch sampler for equal number of samples across classes",
         )
 
     def add_frequency_arguments(self):
