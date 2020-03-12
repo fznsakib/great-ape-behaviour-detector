@@ -89,13 +89,18 @@ def main(cfg):
         ),
         device=DEVICE
     )
+    
+    if cfg.dataloader.sampler:
+        sampler=BalancedBatchSampler(train_dataset, train_dataset.labels)
+    else:
+        sampler=None
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=cfg.dataloader.batch_size,
         shuffle=cfg.dataloader.shuffle,
         num_workers=cfg.dataloader.worker_count,
-        sampler=BalancedBatchSampler(train_dataset, train_dataset.labels)
+        sampler=sampler
     )
 
     print("==> Initialising validation dataset")

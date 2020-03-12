@@ -154,6 +154,9 @@ class ConfigParser:
         self.parser.add_argument(
             "--dataloader.worker_count", default=1, type=int, help="Number of workers to load data",
         )
+        self.parser.add_argument(
+            "--dataloader.sampler", default=False, type=bool, help="Use balanced batch sampler for equal number of samples across classes",
+        )
 
     def add_frequency_arguments(self):
         self.parser.add_argument(
