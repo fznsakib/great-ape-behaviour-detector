@@ -5,11 +5,10 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import models.network as network
 from utils.utils import *
-from models.loss import FocalLoss
-
+from models.loss import *
 
 class CNN:
-    def __init__(self, model_name, lr, num_classes, channels, device):
+    def __init__(self, model_name, loss, lr, num_classes, channels, device):
         super().__init__()
 
         self.lr = lr
@@ -26,8 +25,7 @@ class CNN:
         # Send the model to GPU
         self.model = self.model.to(device)
 
-        # self.criterion = nn.CrossEntropyLoss()
-        self.criterion = FocalLoss()
+        self.criterion = initialise_loss(loss)
         self.optimiser = optim.SGD(self.model.parameters(), lr=self.lr, momentum=0.9)
         self.scheduler = ReduceLROnPlateau(self.optimiser, "min", patience=1, verbose=True)
 

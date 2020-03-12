@@ -201,6 +201,7 @@ def main(cfg):
     # Initialise CNNs for spatial and temporal streams
     spatial_model = spatial.CNN(
         model_name=cfg.model,
+        loss=cfg.loss,
         lr=cfg.hyperparameters.learning_rate,
         num_classes=len(classes),
         channels=3,
@@ -208,6 +209,7 @@ def main(cfg):
     )
     temporal_model = temporal.CNN(
         model_name=cfg.model,
+        loss=cfg.loss,
         lr=cfg.hyperparameters.learning_rate,
         num_classes=len(classes),
         channels=cfg.dataset.temporal_stack * 2,

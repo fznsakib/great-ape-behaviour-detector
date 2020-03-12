@@ -68,6 +68,9 @@ class ConfigParser:
         self.parser.add_argument(
             "--model", default="resnet18", type=str, help="Type of pretrained model to load",
         )
+        self.parser.add_argument(
+            "--loss", default="cross_entropy", type=str, help="Loss function to use",
+        )
 
         self.parser.add_argument(
             "--bucket",
