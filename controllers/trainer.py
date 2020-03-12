@@ -254,6 +254,16 @@ class Trainer:
             self.summary_writer.add_scalars(
                 "average_class_accuracy", {"validation": class_accuracy_average}, self.step
             )
+            self.summary_writer.add_scalars("class_accuracy", {"camera_interaction": f'{class_accuracy[0]:2.2f}'}, self.step)
+            self.summary_writer.add_scalars("class_accuracy", {"climbing_down": f'{class_accuracy[1]:2.2f}'}, self.step)
+            self.summary_writer.add_scalars("class_accuracy", {"climbing_up": f'{class_accuracy[2]:2.2f}'}, self.step)
+            self.summary_writer.add_scalars("class_accuracy", {"hanging": f'{class_accuracy[3]:2.2f}'}, self.step)
+            self.summary_writer.add_scalars("class_accuracy", {"running": f'{class_accuracy[4]:2.2f}'}, self.step)
+            self.summary_writer.add_scalars("class_accuracy", {"sitting": f'{class_accuracy[5]:2.2f}'}, self.step)
+            self.summary_writer.add_scalars("class_accuracy", {"sitting_on_back": f'{class_accuracy[6]:2.2f}'}, self.step)
+            self.summary_writer.add_scalars("class_accuracy", {"standing": f'{class_accuracy[7]:2.2f}'}, self.step)
+            self.summary_writer.add_scalars("class_accuracy", {"walking": f'{class_accuracy[8]:2.2f}'}, self.step)
+            
             self.summary_writer.add_scalars("top1_accuracy", {"validation": top1.item()}, self.step)
             self.summary_writer.add_scalars("top3_accuracy", {"validation": top3.item()}, self.step)
 
