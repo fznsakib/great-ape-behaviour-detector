@@ -75,8 +75,8 @@ def customise_initial_layer(model, model_name, channels):
                         )
 
     pretrain_dict = model_zoo.load_url(model_urls[model_name])
-    model_dict = weight_transform(model_dict, pretrain_dict, channels)
-    model.state_dict()["features.0.weight"] = model_dict["features.0.weight"]
+    new_model_dict = weight_transform(model.state_dict(), pretrain_dict, channels)
+    model.state_dict()["features.0.weight"] = new_model_dict["features.0.weight"]
     return model
 
 def vgg16(pretrained, num_classes, channels):

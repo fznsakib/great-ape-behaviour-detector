@@ -38,8 +38,6 @@ class CNN:
             checkpoint_file_path = f"{checkpoint_file_path}_best"
 
         if os.path.isfile(checkpoint_file_path):
-            # checkpoint = torch.load(checkpoint_file_path)
-
             if self.device == torch.device("cuda"):
                 checkpoint = torch.load(checkpoint_file_path)
             else:

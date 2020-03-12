@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --job-name resnet18_duration72_temporal10
+#SBATCH --job-name vgg16_focal_loss
 #SBATCH --gres gpu:1
 #SBATCH --partition gpu
 #SBATCH --time 0-06:00
 #SBATCH --mem=64GB
-#SBATCH --output output_18_10_5
+#SBATCH --output output_vgg16_focal_loss
 
 # Print some information about the job
 echo "Running on host $(hostname)"
@@ -32,4 +32,4 @@ module load cuDNN
 # conda list
 # srun conda init bash
 # srun conda activate conda-env
-srun python main.py --name resnet18_duration10 --activity-duration 10
+srun python train.py --config config.json

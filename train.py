@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from multiprocessing import cpu_count
 from jsonargparse import ArgumentParser, ActionConfigFile
 from torchvision import transforms, utils
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 from torch.utils.tensorboard import SummaryWriter
 from tabulate import tabulate
 from pathlib import Path
@@ -22,6 +22,7 @@ import models.spatial as spatial
 import models.temporal as temporal
 import controllers.trainer as trainer
 from dataset.dataset import GreatApeDataset
+from dataset.sampler import BalancedBatchSampler
 from utils.utils import *
 from utils.config_parser import ConfigParser
 
@@ -86,12 +87,15 @@ def main(cfg):
                 transforms.Normalize(mean=[0.5], std=[0.5]),
             ]
         ),
+        device=DEVICE
     )
+
     train_loader = DataLoader(
         train_dataset,
         batch_size=cfg.dataloader.batch_size,
         shuffle=cfg.dataloader.shuffle,
         num_workers=cfg.dataloader.worker_count,
+        sampler=BalancedBatchSampler(train_dataset, train_dataset.labels)
     )
 
     print("==> Initialising validation dataset")
@@ -119,6 +123,7 @@ def main(cfg):
                 transforms.Normalize(mean=[0.5], std=[0.5]),
             ]
         ),
+        device=DEVICE
     )
     test_loader = DataLoader(
         test_dataset,
@@ -127,8 +132,8 @@ def main(cfg):
         num_workers=cfg.dataloader.worker_count,
     )
 
-    train_class_samples = train_dataset.get_no_of_samples_by_class()
-    test_class_samples = test_dataset.get_no_of_samples_by_class()
+    train_class_sample_count = train_dataset.get_no_of_samples_by_class()
+    test_class_sample_count = test_dataset.get_no_of_samples_by_class()
 
     print("==> Dataset properties")
 
@@ -142,28 +147,28 @@ def main(cfg):
         [
             "Train",
             train_dataset.__len__(),
-            train_class_samples["camera_interaction"],
-            train_class_samples["climbing_down"],
-            train_class_samples["climbing_up"],
-            train_class_samples["hanging"],
-            train_class_samples["running"],
-            train_class_samples["sitting"],
-            train_class_samples["sitting_on_back"],
-            train_class_samples["standing"],
-            train_class_samples["walking"],
+            train_class_sample_count[0],
+            train_class_sample_count[1],
+            train_class_sample_count[2],
+            train_class_sample_count[3],
+            train_class_sample_count[4],
+            train_class_sample_count[5],
+            train_class_sample_count[6],
+            train_class_sample_count[7],
+            train_class_sample_count[8],
         ],
         [
             "Validation",
             test_dataset.__len__(),
-            test_class_samples["camera_interaction"],
-            test_class_samples["climbing_down"],
-            test_class_samples["climbing_up"],
-            test_class_samples["hanging"],
-            test_class_samples["running"],
-            test_class_samples["sitting"],
-            test_class_samples["sitting_on_back"],
-            test_class_samples["standing"],
-            test_class_samples["walking"],
+            test_class_sample_count[0],
+            test_class_sample_count[1],
+            test_class_sample_count[2],
+            test_class_sample_count[3],
+            test_class_sample_count[4],
+            test_class_sample_count[5],
+            test_class_sample_count[6],
+            test_class_sample_count[7],
+            test_class_sample_count[8],
         ],
     ]
 
