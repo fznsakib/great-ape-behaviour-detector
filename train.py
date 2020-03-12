@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from multiprocessing import cpu_count
 from jsonargparse import ArgumentParser, ActionConfigFile
 from torchvision import transforms, utils
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 from torch.utils.tensorboard import SummaryWriter
 from tabulate import tabulate
 from pathlib import Path
@@ -22,6 +22,7 @@ import models.spatial as spatial
 import models.temporal as temporal
 import controllers.trainer as trainer
 from dataset.dataset import GreatApeDataset
+from dataset.sampler import BalancedBatchSampler
 from utils.utils import *
 from utils.config_parser import ConfigParser
 
@@ -86,12 +87,15 @@ def main(cfg):
                 transforms.Normalize(mean=[0.5], std=[0.5]),
             ]
         ),
+        device=DEVICE
     )
+
     train_loader = DataLoader(
         train_dataset,
         batch_size=cfg.dataloader.batch_size,
         shuffle=cfg.dataloader.shuffle,
         num_workers=cfg.dataloader.worker_count,
+        sampler=BalancedBatchSampler(train_dataset, train_dataset.labels)
     )
 
     print("==> Initialising validation dataset")
@@ -119,6 +123,7 @@ def main(cfg):
                 transforms.Normalize(mean=[0.5], std=[0.5]),
             ]
         ),
+        device=DEVICE
     )
     test_loader = DataLoader(
         test_dataset,

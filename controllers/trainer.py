@@ -273,7 +273,7 @@ class Trainer:
             ],
             [
                 "Accuracy",
-                f'{class_accuracy[0]:2.2f}'',
+                f'{class_accuracy[0]:2.2f}',
                 f'{class_accuracy[1]:2.2f}',
                 f'{class_accuracy[2]:2.2f}',
                 f'{class_accuracy[3]:2.2f}',
