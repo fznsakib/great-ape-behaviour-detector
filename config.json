@@ -1,9 +1,10 @@
 {
-    "name": "vgg16_balanced_sampling_TEST",
+    "name": "resnet18_balanced",
     "mode": "train",
     "resume": false,
     "best" : false,
-    "model": "vgg16",
+    "model": "resnet18",
+    "loss": "focal",
     "log": true,
     "bucket": "faizaanbucket",
     "hyperparameters": {
@@ -26,9 +27,10 @@
         "activity_duration_threshold": 72
     },
     "dataloader": {
-        "batch_size": 32,
+        "batch_size": 35,
         "shuffle": false,
-        "worker_count": 1
+        "worker_count": 1,
+        "sampler": true
     },
     "frequencies": {
         "log": 1,
