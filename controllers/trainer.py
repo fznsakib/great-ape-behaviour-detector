@@ -16,8 +16,7 @@ from utils.utils import *
 class Trainer:
     def __init__(
         self,
-        spatial: nn.Module,
-        temporal: nn.Module,
+        cnn: nn.Module,
         train_loader: DataLoader,
         test_loader: DataLoader,
         summary_writer: SummaryWriter,
@@ -26,8 +25,7 @@ class Trainer:
         save_path: Path,
         log: bool,
     ):
-        self.spatial = spatial
-        self.temporal = temporal
+        self.cnn = cnn
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.summary_writer = summary_writer
@@ -50,21 +48,18 @@ class Trainer:
         print("==> Training Stage")
 
         # Activate training mode
-        self.spatial.model.train()
-        self.temporal.model.train()
+        self.cnn.model.train()
 
         # Train for requested number of epochs
         for epoch in range(start_epoch, start_epoch + epochs):
-            self.spatial.model.train()
-            self.temporal.model.train()
-
+            self.cnn.model.train()
+            
             data_load_start_time = time.time()
 
             for i, (spatial_data, temporal_data, labels, metadata) in enumerate(self.train_loader):
                 
                 # Set gradients to zero
-                self.spatial.optimiser.zero_grad()
-                self.temporal.optimiser.zero_grad()
+                self.cnn.optimiser.zero_grad()
 
                 spatial_data = spatial_data.to(self.device)
                 temporal_data = temporal_data.to(self.device)
@@ -73,26 +68,21 @@ class Trainer:
                 data_load_end_time = time.time()
 
                 # Compute the forward pass of the model
-                spatial_logits = self.spatial.model(spatial_data)
-                temporal_logits = self.temporal.model(temporal_data)
+                logits = self.cnn.model(spatial_data, temporal_data)
 
                 # Compute the loss using model criterion and store it
-                spatial_loss = self.spatial.criterion(spatial_logits, labels)
-                temporal_loss = self.temporal.criterion(temporal_logits, labels)
+                loss = self.cnn.criterion(logits, labels)
 
                 # Compute the backward pass
-                spatial_loss.backward()
-                temporal_loss.backward()
+                loss.backward()
 
                 # Step the optimiser
-                self.spatial.optimiser.step()
-                self.temporal.optimiser.step()
+                self.cnn.optimiser.step()
 
                 # Compute accuracy
                 with torch.no_grad():
-                    fusion_logits = metrics.average_fusion(spatial_logits, temporal_logits)
                     top1, top3 = metrics.compute_topk_accuracy(
-                        torch.from_numpy(fusion_logits), labels, topk=(1, 3)
+                        logits, labels, topk=(1, 3)
                     )
 
                 data_load_time = data_load_end_time - data_load_start_time
@@ -100,11 +90,11 @@ class Trainer:
 
                 if ((self.step + 1) % log_frequency) == 0 and self.log:
                     self.log_metrics(
-                        epoch, top1, top3, spatial_loss, temporal_loss, data_load_time, step_time,
+                        epoch, top1, top3, loss, data_load_time, step_time,
                     )
                 if ((self.step + 1) % print_frequency) == 0:
                     self.print_metrics(
-                        epoch, top1, top3, spatial_loss, temporal_loss, data_load_time, step_time,
+                        epoch, top1, top3, loss, data_load_time, step_time,
                     )
 
                 self.step += 1
@@ -117,17 +107,14 @@ class Trainer:
             if ((epoch + 1) % val_frequency) == 0:
                 (
                     validation_accuracy,
-                    validation_spatial_loss,
-                    validation_temporal_loss,
+                    validation_loss,
                 ) = self.validate()
 
                 # Adjust LR using scheduler
-                self.spatial.scheduler.step(validation_spatial_loss)
-                self.temporal.scheduler.step(validation_temporal_loss)
+                self.cnn.scheduler.step(validation_loss)
 
                 # Switch back to train mode after validation
-                self.spatial.model.train()
-                self.temporal.model.train()
+                self.cnn.model.train()
 
                 # Checkpoint models if required
                 if self.name:
@@ -143,14 +130,8 @@ class Trainer:
                     )
                     save_checkpoint(
                         {
-                            "state_dict": self.spatial.model.state_dict(),
-                            "optimiser": self.spatial.optimiser.state_dict(),
-                            "epoch": epoch,
-                            "accuracy": validation_accuracy,
-                        },
-                        {
-                            "state_dict": self.temporal.model.state_dict(),
-                            "optimiser": self.temporal.optimiser.state_dict(),
+                            "state_dict": self.cnn.model.state_dict(),
+                            "optimiser": self.cnn.optimiser.state_dict(),
                             "epoch": epoch,
                             "accuracy": validation_accuracy,
                         },
@@ -160,14 +141,13 @@ class Trainer:
                     )
 
     def print_metrics(
-        self, epoch, top1, top3, spatial_loss, temporal_loss, data_load_time, step_time,
+        self, epoch, top1, top3, loss, data_load_time, step_time,
     ):
         epoch_step = self.step % len(self.train_loader)
         print(
             f"epoch: [{epoch}], "
             f"step: [{epoch_step}/{len(self.train_loader)}], "
-            f"spatial batch loss: {spatial_loss:.5f}, "
-            f"temporal batch loss: {temporal_loss:.5f}, "
+            f"batch loss: {loss:.5f}, "
             f"top1 accuracy: {top1.item():2.2f}, "
             f"top3 accuracy: {top3.item():2.2f}, "
             f"data load time: {data_load_time:.5f}, "
@@ -175,16 +155,13 @@ class Trainer:
         )
 
     def log_metrics(
-        self, epoch, top1, top3, spatial_loss, temporal_loss, data_load_time, step_time,
+        self, epoch, top1, top3, loss, data_load_time, step_time,
     ):
         self.summary_writer.add_scalar("epoch", epoch, self.step)
         self.summary_writer.add_scalars("top1_accuracy", {"train": top1.item()}, self.step)
         self.summary_writer.add_scalars("top3_accuracy", {"train": top3.item()}, self.step)
         self.summary_writer.add_scalars(
-            "spatial_loss", {"train": float(spatial_loss.item())}, self.step
-        )
-        self.summary_writer.add_scalars(
-            "temporal_loss", {"train": float(temporal_loss.item())}, self.step
+            "loss", {"train": float(loss.item())}, self.step
         )
         self.summary_writer.add_scalar("time/data", data_load_time, self.step)
         self.summary_writer.add_scalar("time/data", step_time, self.step)
@@ -194,13 +171,11 @@ class Trainer:
         print("==> Validation Stage")
 
         results = {"labels": [], "logits": [], "predictions": []}
-        total_spatial_loss = 0
-        total_temporal_loss = 0
+        total_loss = 0
 
         # Turn on evaluation mode for networks. This ensures that dropout is not applied
         # during validation and a different form of batch normalisation is used.
-        self.spatial.model.eval()
-        self.temporal.model.eval()
+        self.cnn.model.eval()
 
         # No need to track gradients for validation, we're not optimizing.
         with torch.no_grad():
@@ -212,23 +187,19 @@ class Trainer:
                 temporal_data = temporal_data.to(self.device)
                 labels = labels.to(self.device)
 
-                spatial_logits = self.spatial.model(spatial_data)
-                temporal_logits = self.temporal.model(temporal_data)
+                logits = self.cnn.model(spatial_data, temporal_data)
 
-                spatial_loss = self.spatial.criterion(spatial_logits, labels)
-                temporal_loss = self.temporal.criterion(temporal_logits, labels)
+                loss = self.cnn.criterion(logits, labels)
 
-                total_spatial_loss += spatial_loss.item()
-                total_temporal_loss += temporal_loss.item()
-
-                # Accumulate predictions against ground truth labels
-                fusion_logits = metrics.average_fusion(spatial_logits, temporal_logits)
+                total_loss += loss.item()
+                
+                logits =(logits.detach().cpu()).numpy()
 
                 # Populate dictionary with logits and labels of all samples in this batch
                 for j in range(len(labels)):
                     results["labels"].append(labels[j].item())
-                    results["logits"].append(fusion_logits[j].tolist())
-                    results["predictions"].append(np.argmax(fusion_logits[j]).item())
+                    results["logits"].append(logits[j].tolist())
+                    results["predictions"].append(np.argmax(logits[j]).item())
 
         # Get accuracy by checking for correct predictions across all predictions
         top1, top3 = metrics.compute_topk_accuracy(
@@ -240,29 +211,25 @@ class Trainer:
         class_accuracy_average = mean(class_accuracy.values())
 
         # Get average loss for each stream
-        average_spatial_loss = total_spatial_loss / len(self.test_loader)
-        average_temporal_loss = total_temporal_loss / len(self.test_loader)
+        average_loss = total_loss / len(self.test_loader)
 
         # Log metrics
         if self.log:
             self.summary_writer.add_scalars(
-                "spatial_loss", {"validation": average_spatial_loss}, self.step
-            )
-            self.summary_writer.add_scalars(
-                "temporal_loss", {"validation": average_temporal_loss}, self.step
+                "loss", {"validation": average_loss}, self.step
             )
             self.summary_writer.add_scalars(
                 "average_class_accuracy", {"validation": class_accuracy_average}, self.step
             )
-            self.summary_writer.add_scalars("class_accuracy", {"camera_interaction": f'{class_accuracy[0]:2.2f}'}, self.step)
-            self.summary_writer.add_scalars("class_accuracy", {"climbing_down": f'{class_accuracy[1]:2.2f}'}, self.step)
-            self.summary_writer.add_scalars("class_accuracy", {"climbing_up": f'{class_accuracy[2]:2.2f}'}, self.step)
-            self.summary_writer.add_scalars("class_accuracy", {"hanging": f'{class_accuracy[3]:2.2f}'}, self.step)
-            self.summary_writer.add_scalars("class_accuracy", {"running": f'{class_accuracy[4]:2.2f}'}, self.step)
-            self.summary_writer.add_scalars("class_accuracy", {"sitting": f'{class_accuracy[5]:2.2f}'}, self.step)
-            self.summary_writer.add_scalars("class_accuracy", {"sitting_on_back": f'{class_accuracy[6]:2.2f}'}, self.step)
-            self.summary_writer.add_scalars("class_accuracy", {"standing": f'{class_accuracy[7]:2.2f}'}, self.step)
-            self.summary_writer.add_scalars("class_accuracy", {"walking": f'{class_accuracy[8]:2.2f}'}, self.step)
+            self.summary_writer.add_scalars("class_accuracy", {"camera_interaction": class_accuracy[0]}, self.step)
+            self.summary_writer.add_scalars("class_accuracy", {"climbing_down": class_accuracy[1]}, self.step)
+            self.summary_writer.add_scalars("class_accuracy", {"climbing_up": class_accuracy[2]}, self.step)
+            self.summary_writer.add_scalars("class_accuracy", {"hanging": class_accuracy[3]}, self.step)
+            self.summary_writer.add_scalars("class_accuracy", {"running": class_accuracy[4]}, self.step)
+            self.summary_writer.add_scalars("class_accuracy", {"sitting": class_accuracy[5]}, self.step)
+            self.summary_writer.add_scalars("class_accuracy", {"sitting_on_back": class_accuracy[6]}, self.step)
+            self.summary_writer.add_scalars("class_accuracy", {"standing": class_accuracy[7]}, self.step)
+            self.summary_writer.add_scalars("class_accuracy", {"walking": class_accuracy[8]}, self.step)
             
             self.summary_writer.add_scalars("top1_accuracy", {"validation": top1.item()}, self.step)
             self.summary_writer.add_scalars("top3_accuracy", {"validation": top3.item()}, self.step)
@@ -299,8 +266,7 @@ class Trainer:
         
         print("==> Overall Results")
         validation_results = [
-            ["Average Spatial Loss:", f"{average_spatial_loss:.5f}"],
-            ["Average Temporal Loss:", f"{average_temporal_loss:.5f}"],
+            ["Average Loss:", f"{average_loss:.5f}"],
             ["Average Class Accuracy:", f"{class_accuracy_average:2f}"],
             ["Top1 Accuracy:", f"{top1.item():.2f}"],
             ["Top3 Accuracy:", f"{top3.item():.2f}"],
@@ -310,4 +276,4 @@ class Trainer:
 
         # TODO: print per class accuracy in separate table
 
-        return top1, average_spatial_loss, average_temporal_loss
+        return top1, average_loss

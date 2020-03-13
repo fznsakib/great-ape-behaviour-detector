@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --job-name vgg16_focal_loss
+#SBATCH --job-name resnet18_focal_nonfrozen
 #SBATCH --gres gpu:1
 #SBATCH --partition gpu
-#SBATCH --time 0-06:00
+#SBATCH --time 0-08:00
 #SBATCH --mem=64GB
-#SBATCH --output output_vgg16_focal_loss
+#SBATCH --output output_resnet18_focal_nonfrozen
 
 # Print some information about the job
 echo "Running on host $(hostname)"

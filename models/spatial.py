@@ -12,7 +12,7 @@ class CNN:
         super().__init__()
 
         self.lr = lr
-        self.start_epoch = 0
+        self.epoch = 0
         self.accuracy = 0
         self.device = device
 
@@ -43,11 +43,11 @@ class CNN:
 
             self.model.load_state_dict(checkpoint["state_dict"])
             self.optimiser.load_state_dict(checkpoint["optimiser"])
-            self.start_epoch = checkpoint["epoch"]
+            self.epoch = checkpoint["epoch"]
             self.accuracy = checkpoint["accuracy"]
 
             print(
-                f"==> Loaded spatial model checkpoint {name} at epoch {self.start_epoch} with top1 accuracy {self.accuracy:.2f}"
+                f"==> Loaded spatial model checkpoint {name} at epoch {self.epoch} with top1 accuracy {self.accuracy:.2f}"
             )
         else:
             print(f"==> No checkpoint at {checkpoint_file_path} -- Training model from scratch")

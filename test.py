@@ -26,6 +26,7 @@ Custom Library Imports
 """ """""" """""" """""" """""" """""" """""" """"""
 import models.spatial as spatial
 import models.temporal as temporal
+import models.network as network
 import controllers.evaluator as evaluator
 import utils.metrics as metrics
 from dataset.dataset import GreatApeDataset
@@ -51,24 +52,16 @@ def main(cfg):
     start_time = datetime.datetime.now()
 
     # Initialise spatial/temporal CNNs
-    spatial_model = spatial.CNN(
+    cnn = network.CNN(
         model_name=cfg.model,
         lr=cfg.hyperparameters.learning_rate,
         num_classes=len(classes),
-        channels=3,
-        device=DEVICE,
-    )
-    temporal_model = temporal.CNN(
-        model_name=cfg.model,
-        lr=cfg.hyperparameters.learning_rate,
-        num_classes=len(classes),
-        channels=cfg.dataset.temporal_stack * 2,
+        temporal_stack=cfg.dataset.temporal_stack,
         device=DEVICE,
     )
 
     # Load checkpoints
-    spatial_model.load_checkpoint(cfg.name, cfg.paths.checkpoints, cfg.best)
-    temporal_model.load_checkpoint(cfg.name, cfg.paths.checkpoints, cfg.best)
+    cnn.load_checkpoint(cfg.name, cfg.paths.checkpoints, cfg.best)
 
     # Initialise test dataloader
     test_dataset = GreatApeDataset(
@@ -104,8 +97,7 @@ def main(cfg):
 
     # Initialise evaluator
     network_evaluator = evaluator.Evaluator(
-        spatial=spatial_model,
-        temporal=temporal_model,
+        cnn=cnn,
         data_loader=test_loader,
         device=DEVICE,
         name=cfg.name,

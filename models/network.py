@@ -2,7 +2,6 @@ import torch.nn as nn
 import torchvision.models as models
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torchsummary import summary
 from torchvision import models
 
 import models.resnet as resnet
@@ -27,13 +26,19 @@ def initialise_model(model_name, pretrained, num_classes, channels):
     return model
 
 class FusionNet(nn.Module):
-    def __init__(self, spatial, temporal):
+    def __init__(self, spatial, temporal, num_classes):
         super(FusionNet, self).__init__()
         
         # Remove final avgpool and fc to produce an output feature size of:
         # N x 512 x 7 x 7
-        self.spatial = nn.Sequential(*list(self.spatial_model.children())[:-2])
-        self.temporal = nn.Sequential(*list(self.temporal_model.children())[:-2])
+        self.spatial = nn.Sequential(*list(spatial.children())[:-2])
+        
+        # Freeze spatial layers
+        # for param in self.spatial.parameters():
+        #     param.requires_grad = False
+        
+        
+        self.temporal = nn.Sequential(*list(temporal.children())[:-2])
         
         self.layer1 = nn.Sequential(
             nn.Conv3d(1024, 512, 1, stride=1, padding=1, dilation=1, bias=True),
@@ -60,7 +65,6 @@ class FusionNet(nn.Module):
             y[:, (2 * i), :, :] = x1[:, i, :, :]
             y[:, (2 * i + 1), :, :] = x2[:, i, :, :]
             
-        print(y)
         y = y.view(y.size(0), 1024, 1, 7, 7)
         cnn_out = self.layer1(y)
         cnn_out = cnn_out.view(cnn_out.size(0), -1)
@@ -68,26 +72,23 @@ class FusionNet(nn.Module):
         return out
     
 class CNN:
-    def __init__(self, model_name, loss, lr, num_classes, channels, device):
+    def __init__(self, model_name, loss, lr, num_classes, temporal_stack, device):
         super().__init__()
         
         self.lr = lr
-        self.start_epoch = 0
+        self.epoch = 0
         self.accuracy = 0
         self.device = device
 
-        print("==> Initialising spatial CNN model")
         spatial_model = initialise_model(
             model_name=model_name, pretrained=True, num_classes=num_classes, channels=3
         )
         
-        print("==> Initialising temporal CNN model")
         temporal_model = initialise_model(
-            model_name=model_name, pretrained=False, num_classes=num_classes, channels=temporal_stack
+            model_name=model_name, pretrained=False, num_classes=num_classes, channels=temporal_stack*2
         )
         
-        print("==> Initialising fusion CNN model")
-        self.model = FusionNet(spatial_model, temporal_model)
+        self.model = FusionNet(spatial_model, temporal_model, num_classes)
 
         # Send the model to GPU
         self.model = self.model.to(device)
@@ -110,11 +111,11 @@ class CNN:
 
             self.model.load_state_dict(checkpoint["state_dict"])
             self.optimiser.load_state_dict(checkpoint["optimiser"])
-            self.start_epoch = checkpoint["epoch"]
+            self.epoch = checkpoint["epoch"]
             self.accuracy = checkpoint["accuracy"]
 
             print(
-                f"==> Loaded model checkpoint {name} at epoch {self.start_epoch} with top1 accuracy {self.accuracy:.2f}"
+                f"==> Loaded model checkpoint {name} at epoch {self.epoch} with top1 accuracy {self.accuracy:.2f}"
             )
         else:
             print(f"==> No checkpoint at {checkpoint_file_path} -- Training model from scratch")
