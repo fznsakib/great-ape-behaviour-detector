@@ -16,14 +16,12 @@ from utils.utils import *
 class Evaluator:
     def __init__(
         self,
-        spatial: nn.Module,
-        temporal: nn.Module,
+        cnn: nn.Module,
         data_loader: DataLoader,
         device: torch.device,
         name: str,
     ):
-        self.spatial = spatial
-        self.temporal = temporal
+        self.cnn = cnn
         self.data_loader = data_loader
         self.device = device
         self.name = name
@@ -32,8 +30,7 @@ class Evaluator:
     def predict(self):
 
         # Turn on evaluation for networkss
-        self.spatial.model.eval()
-        self.temporal.model.eval()
+        self.cnn.model.eval()
 
         #  No need to track gradients for validation, we're not optimizing.
         with torch.no_grad():
@@ -49,12 +46,10 @@ class Evaluator:
                 start_frame = metadata["start_frame"][0]
                 video = metadata["video"][0]
 
-                spatial_logits = self.spatial.model(spatial_data)
-                temporal_logits = self.temporal.model(temporal_data)
+                logits = self.cnn.model(spatial_data, temporal_data)
 
                 # Accumulate predictions against ground truth labels
-                fusion_logits = metrics.average_fusion(spatial_logits, temporal_logits)
-                prediction = fusion_logits.argmax().item()
+                prediction = logits.argmax().item()
 
                 # Insert results to dictionary
                 if video not in self.predictions.keys():

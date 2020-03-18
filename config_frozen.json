@@ -1,5 +1,5 @@
 {
-    "name": "resnet18_focal_nonfrozen",
+    "name": "resnet18_focal_frozen",
     "mode": "train",
     "resume": false,
     "best" : false,

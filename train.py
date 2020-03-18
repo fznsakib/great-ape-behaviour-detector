@@ -5,6 +5,7 @@ import os
 import torch
 import torchvision
 import argparse
+import shutil
 import numpy as np
 import matplotlib.pyplot as plt
 from multiprocessing import cpu_count
@@ -20,6 +21,7 @@ Custom Library Imports
 """ """""" """""" """""" """""" """""" """""" """"""
 import models.spatial as spatial
 import models.temporal as temporal
+import models.network as network
 import controllers.trainer as trainer
 from dataset.dataset import GreatApeDataset
 from dataset.sampler import BalancedBatchSampler
@@ -198,28 +200,20 @@ def main(cfg):
         )
     )
 
-    # Initialise CNNs for spatial and temporal streams
-    spatial_model = spatial.CNN(
+    # Initialise fusion CNN with spatial and temporal streams
+    print("==> Initialising two-stream fusion CNN")
+    cnn = network.CNN(
         model_name=cfg.model,
         loss=cfg.loss,
         lr=cfg.hyperparameters.learning_rate,
         num_classes=len(classes),
-        channels=3,
-        device=DEVICE,
-    )
-    temporal_model = temporal.CNN(
-        model_name=cfg.model,
-        loss=cfg.loss,
-        lr=cfg.hyperparameters.learning_rate,
-        num_classes=len(classes),
-        channels=cfg.dataset.temporal_stack * 2,
-        device=DEVICE,
+        temporal_stack=cfg.dataset.temporal_stack,
+        device=DEVICE
     )
 
     # If resuming, then load saved checkpoints
     if cfg.resume:
-        spatial_model.load_checkpoint(cfg.name, cfg.paths.checkpoints)
-        temporal_model.load_checkpoint(cfg.name, cfg.paths.checkpoints)
+        cnn.load_checkpoint(cfg.name, cfg.paths.checkpoints)
 
     # Initialise log writing
     summary_writer = None
@@ -227,11 +221,12 @@ def main(cfg):
         log_dir = f"{cfg.paths.logs}/{cfg.name}"
         print(f"==> Writing logs to {os.path.basename(log_dir)}")
         summary_writer = SummaryWriter(str(log_dir), flush_secs=5)
+        shutil.copy('config.json', log_dir)
+        
 
     # Initialise trainer with both CNNs
     cnn_trainer = trainer.Trainer(
-        spatial_model,
-        temporal_model,
+        cnn,
         train_loader,
         test_loader,
         summary_writer,
@@ -243,10 +238,9 @@ def main(cfg):
 
     # Begin training
     print("==> Begin training")
-    start_epoch = max(spatial_model.start_epoch, temporal_model.start_epoch)
     cnn_trainer.train(
         epochs=cfg.hyperparameters.epochs,
-        start_epoch=start_epoch,
+        start_epoch=cnn.epoch,
         val_frequency=cfg.frequencies.validation,
         print_frequency=cfg.frequencies.print,
         log_frequency=cfg.frequencies.log,

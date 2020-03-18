@@ -16,19 +16,17 @@ from botocore.exceptions import ClientError
 from utils.data import *
 
 # Save model to disk
-def save_checkpoint(spatial_state, temporal_state, is_best_model, name, save_path):
+def save_checkpoint(model, is_best_model, name, save_path):
 
     checkpoint_path = f"{save_path}/{name}"
 
     if not os.path.isdir(checkpoint_path):
         os.mkdir(checkpoint_path)
 
-    torch.save(spatial_state, f"{checkpoint_path}/spatial")
-    torch.save(temporal_state, f"{checkpoint_path}/temporal")
+    torch.save(model, f"{checkpoint_path}/model")
 
     if is_best_model:
-        shutil.copyfile(f"{checkpoint_path}/spatial", f"{checkpoint_path}/spatial_best")
-        shutil.copyfile(f"{checkpoint_path}/temporal", f"{checkpoint_path}/temporal_best")
+        shutil.copyfile(f"{checkpoint_path}/model", f"{checkpoint_path}/model_best")
 
 
 # Copy frames from dataset to prepare for bounding box placement
