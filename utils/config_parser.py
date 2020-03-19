@@ -96,6 +96,9 @@ class ConfigParser:
         self.parser.add_argument(
             "--hyperparameters.sgd_momentum", default=0.9, type=float, help="SGD momentum",
         )
+        self.parser.add_argument(
+            "--hyperparameters.regularisation", default=0, type=float, help="L2 regularisation",
+        )
 
     def add_path_arguments(self):
         self.parser.add_argument(

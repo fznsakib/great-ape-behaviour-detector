@@ -72,7 +72,7 @@ class FusionNet(nn.Module):
         return out
     
 class CNN:
-    def __init__(self, model_name, loss, lr, num_classes, temporal_stack, device):
+    def __init__(self, model_name, loss, lr, regularisation, num_classes, temporal_stack, device):
         super().__init__()
         
         self.lr = lr
@@ -94,7 +94,7 @@ class CNN:
         self.model = self.model.to(device)
 
         self.criterion = initialise_loss(loss)
-        self.optimiser = optim.SGD(self.model.parameters(), lr=self.lr, momentum=0.9)
+        self.optimiser = optim.SGD(self.model.parameters(), lr=self.lr, momentum=0.9, weight_decay=regularisation)
         self.scheduler = ReduceLROnPlateau(self.optimiser, "min", patience=1, verbose=True)
 
     def load_checkpoint(self, name, checkpoint_path, best=False):
