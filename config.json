@@ -1,5 +1,5 @@
 {
-    "name": "resnet18_focal_nonfrozen",
+    "name": "dataaug_all",
     "mode": "train",
     "resume": false,
     "best" : false,
@@ -10,7 +10,8 @@
     "hyperparameters": {
         "epochs": 50,
         "learning_rate": 0.001,
-        "sgd_momentum": 0.9
+        "sgd_momentum": 0.9,
+        "regularisation": 0
     },
     "paths": {
         "annotations": "../scratch/data/annotations",

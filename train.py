@@ -75,20 +75,6 @@ def main(cfg):
         classes=classes,
         frame_dir=cfg.paths.frames,
         annotations_dir=cfg.paths.annotations,
-        spatial_transform=transforms.Compose(
-            [
-                transforms.Resize((224, 224)),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
-            ]
-        ),
-        temporal_transform=transforms.Compose(
-            [
-                transforms.Resize((224, 224)),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[0.5], std=[0.5]),
-            ]
-        ),
         device=DEVICE
     )
     
@@ -116,20 +102,6 @@ def main(cfg):
         classes=classes,
         frame_dir=cfg.paths.frames,
         annotations_dir=cfg.paths.annotations,
-        spatial_transform=transforms.Compose(
-            [
-                transforms.Resize((224, 224)),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
-            ]
-        ),
-        temporal_transform=transforms.Compose(
-            [
-                transforms.Resize((224, 224)),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[0.5], std=[0.5]),
-            ]
-        ),
         device=DEVICE
     )
     test_loader = DataLoader(

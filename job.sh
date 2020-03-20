@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --job-name resnet18_focal_nonfrozen
+#SBATCH --job-name dataaug_all
 #SBATCH --gres gpu:1
 #SBATCH --partition gpu
 #SBATCH --time 0-08:00
 #SBATCH --mem=64GB
-#SBATCH --output output_resnet18_focal_nonfrozen
+#SBATCH --output output_dataaug_all
 
 # Print some information about the job
 echo "Running on host $(hostname)"
@@ -20,16 +20,6 @@ echo
 
 module load CUDA
 module load cuDNN
-# module load CUDA/8.0.44
-# module load cuDNN/5.1-CUDA-8.0.44
-# module load languages/anaconda3/2019.10-3.7.4-tflow-2.0.0
 
 # Run the Python script
-# srun cd ~/great-ape-behaviour-detector
-# srun cd ..
-# srun pwd
-# srun conda install pytorch torchvision cudatoolkit=10.1 -c pytorch
-# conda list
-# srun conda init bash
-# srun conda activate conda-env
 srun python train.py --config config.json
