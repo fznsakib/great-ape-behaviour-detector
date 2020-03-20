@@ -1,6 +1,7 @@
 from __future__ import print_function, division
 import os
 import torch
+import random
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -32,8 +33,6 @@ class GreatApeDataset(torch.utils.data.Dataset):
         classes,
         frame_dir,
         annotations_dir,
-        spatial_transform,
-        temporal_transform,
         device
     ):
         """
@@ -54,8 +53,34 @@ class GreatApeDataset(torch.utils.data.Dataset):
         self.classes = classes
         self.frame_dir = frame_dir
         self.annotations_dir = annotations_dir
-        self.spatial_transform = spatial_transform
-        self.temporal_transform = temporal_transform
+        self.spatial_transform = transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
+            ]
+        )
+        self.temporal_transform = temporal_transform=transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5], std=[0.5]),
+            ]
+        )
+        self.spatial_augmentation_transform = [
+            transforms.ColorJitter(brightness=0.5),
+            transforms.ColorJitter(contrast=0.5),
+            transforms.ColorJitter(saturation=0.5),
+            transforms.ColorJitter(hue=0.5),
+            transforms.RandomHorizontalFlip(p=1),
+            transforms.RandomPerspective(p=1),
+            transforms.RandomRotation(degrees=20),
+        ]
+            
+        self.temporal_augmentation_transform = [
+            transforms.RandomHorizontalFlip(p=1)
+        ]
+        
         self.labels = 0
         self.samples = {}
         self.samples_by_class = {}
@@ -101,18 +126,22 @@ class GreatApeDataset(torch.utils.data.Dataset):
         ape = get_ape_by_id(self.annotations_dir, video, spatial_frame_no, ape_id)
         coordinates = get_ape_coordinates(ape)
 
-        # Crop around ape and apply transforms
+        # Crop around ape
         spatial_image = spatial_image.crop(
             (coordinates[0], coordinates[1], coordinates[2], coordinates[3])
         )
-
-        spatial_data = self.spatial_transform(spatial_image)
+        
+        # Apply augmentation and pre-processing transforms
+        spatial_data = self.apply_augmentation_transforms(spatial_image, self.spatial_augmentation_transform)
+        spatial_data = self.spatial_transform(spatial_data)
+        
         spatial_image.close()
 
         """
         Temporal Data
         """
         temporal_data = torch.FloatTensor(2 * self.temporal_stack, 224, 224)
+        apply_transform = random.random() > 0.5
 
         for i in range(0, self.temporal_stack):
             x_path = f"{self.frame_dir}/horizontal_flow/{video}/{video}_frame_{start_frame + i}.jpg"
@@ -129,9 +158,16 @@ class GreatApeDataset(torch.utils.data.Dataset):
             image_x = image_x.crop((coordinates[0], coordinates[1], coordinates[2], coordinates[3]))
             image_y = image_y.crop((coordinates[0], coordinates[1], coordinates[2], coordinates[3]))
 
-            final_image_x = self.temporal_transform(image_x)
-            final_image_y = self.temporal_transform(image_y)
-
+            # Apply augmentation and pre-processing transforms for entire stack
+            if apply_transform:
+                final_image_x = self.apply_augmentation_transforms(image_x, self.temporal_augmentation_transform, temporal=True)
+                final_image_y = self.apply_augmentation_transforms(image_y, self.temporal_augmentation_transform, temporal=True)
+                final_image_x = self.temporal_transform(final_image_x)
+                final_image_y = self.temporal_transform(final_image_y)
+            else:
+                final_image_x = self.temporal_transform(image_x)
+                final_image_y = self.temporal_transform(image_y)
+            
             temporal_data[2 * i, :, :] = final_image_x
             temporal_data[(2 * i) + 1, :, :] = final_image_y
 
@@ -355,6 +391,16 @@ class GreatApeDataset(torch.utils.data.Dataset):
         
     def _get_label(self, index):
         return self.labels[index]
+    
+    def apply_augmentation_transforms(self, image, augmentations, temporal=False):
+        for aug in augmentations:
+            if temporal:
+                image = aug(image)
+            else:
+                if random.random() > 0.5:
+                    image = aug(image)
+                
+        return image
 
 
 if __name__ == "__main__":
@@ -367,20 +413,6 @@ if __name__ == "__main__":
     classes = "../scratch/data/classes.txt"
     frame_dir = "../scratch/data/frames"
     annotations_dir = "../scratch/data/annotations"
-    spatial_transform = transforms.Compose(
-        [
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ]
-    )
-    temporal_transform = transforms.Compose(
-        [
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5], std=[0.5]),
-        ]
-    )
 
     dataset = GreatApeDataset(
         mode,
@@ -390,7 +422,5 @@ if __name__ == "__main__":
         video_names,
         classes,
         frame_dir,
-        annotations_dir,
-        spatial_transform,
-        temporal_transform,
+        annotations_dir
     )
