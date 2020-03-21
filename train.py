@@ -172,6 +172,11 @@ def main(cfg):
         )
     )
 
+    largest_class_size = max(train_class_sample_count)
+    weights = torch.empty(len(train_class_sample_count), dtype=torch.float)
+    for i in range(0, len(train_class_sample_count)):
+        weights[i] = largest_class_size/train_class_sample_count[i]
+
     # Initialise fusion CNN with spatial and temporal streams
     print("==> Initialising two-stream fusion CNN")
     cnn = network.CNN(
@@ -181,6 +186,7 @@ def main(cfg):
         regularisation=cfg.hyperparameters.regularisation,
         num_classes=len(classes),
         temporal_stack=cfg.dataset.temporal_stack,
+        weights=weights,
         device=DEVICE
     )
 

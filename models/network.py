@@ -72,13 +72,14 @@ class FusionNet(nn.Module):
         return out
     
 class CNN:
-    def __init__(self, model_name, loss, lr, regularisation, num_classes, temporal_stack, device):
+    def __init__(self, model_name, loss, lr, regularisation, num_classes, temporal_stack, weights, device):
         super().__init__()
         
         self.lr = lr
         self.epoch = 0
         self.accuracy = 0
         self.device = device
+        self.weights = weights
 
         spatial_model = initialise_model(
             model_name=model_name, pretrained=True, num_classes=num_classes, channels=3
@@ -93,7 +94,9 @@ class CNN:
         # Send the model to GPU
         self.model = self.model.to(device)
 
-        self.criterion = initialise_loss(loss)
+        # self.criterion = initialise_loss(loss)
+        self.weights = self.weights.to(device)
+        self.criterion = nn.CrossEntropyLoss(self.weights)
         self.optimiser = optim.SGD(self.model.parameters(), lr=self.lr, momentum=0.9, weight_decay=regularisation)
         self.scheduler = ReduceLROnPlateau(self.optimiser, "min", patience=1, verbose=True)
 
