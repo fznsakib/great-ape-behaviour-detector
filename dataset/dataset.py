@@ -68,17 +68,18 @@ class GreatApeDataset(torch.utils.data.Dataset):
             ]
         )
         self.spatial_augmentation_transform = [
-            transforms.ColorJitter(brightness=0.5),
-            transforms.ColorJitter(contrast=0.5),
-            transforms.ColorJitter(saturation=0.5),
-            transforms.ColorJitter(hue=0.5),
-            transforms.RandomHorizontalFlip(p=1),
-            transforms.RandomPerspective(p=1),
-            transforms.RandomRotation(degrees=20),
+            # transforms.ColorJitter(brightness=0.5),
+            # transforms.ColorJitter(contrast=0.5),
+            # transforms.ColorJitter(saturation=0.5),
+            # transforms.ColorJitter(hue=0.5),
+            # transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
+            # transforms.RandomHorizontalFlip(p=1),
+            # transforms.RandomPerspective(p=1),
+            # transforms.RandomRotation(degrees=10),
         ]
             
         self.temporal_augmentation_transform = [
-            transforms.RandomHorizontalFlip(p=1)
+            # transforms.RandomHorizontalFlip(p=1)
         ]
         
         self.labels = 0
@@ -124,6 +125,8 @@ class GreatApeDataset(torch.utils.data.Dataset):
 
         # Get ape and its coordinates
         ape = get_ape_by_id(self.annotations_dir, video, spatial_frame_no, ape_id)
+        # print(ape, video, ape_id, start_frame, spatial_frame_no)
+        
         coordinates = get_ape_coordinates(ape)
 
         # Crop around ape
@@ -299,7 +302,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
 
                 # Traverse through every frame to get samples
                 while frame_no <= no_of_frames:
-                    if (no_of_frames - frame_no) < (self.sample_interval - 1):
+                    if (no_of_frames - frame_no) < (self.temporal_stack - 1):
                         break
 
                     # Find first instance of ape by id
@@ -313,7 +316,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                         insufficient_apes = False
 
                         # Check that this ape exists for the next n frames
-                        for look_ahead_frame_no in range(frame_no, frame_no + self.sample_interval):
+                        for look_ahead_frame_no in range(frame_no, frame_no + self.temporal_stack):
                             ape = get_ape_by_id(
                                 self.annotations_dir, video, look_ahead_frame_no, current_ape_id
                             )
@@ -327,11 +330,14 @@ class GreatApeDataset(torch.utils.data.Dataset):
                         # If the ape is not present for enough consecutive frames, then move on
                         if insufficient_apes:
                             # frame_no = look_ahead_frame_no
-                            frame_no += self.sample_interval
+                            frame_no += self.temporal_stack
                             continue
 
                         # Get majority activity
-                        activity = mode(activities)
+                        try:
+                            activity = mode(activities)
+                        except:
+                            activity = activities[0]
 
                         # Check if there are enough frames left
                         if (no_of_frames - frame_no) >= self.temporal_stack:
@@ -351,7 +357,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                                 }
                             )
 
-                        frame_no += self.sample_interval
+                        frame_no += self.temporal_stack
 
         return
 

@@ -179,6 +179,7 @@ def main(cfg):
         loss=cfg.loss,
         lr=cfg.hyperparameters.learning_rate,
         regularisation=cfg.hyperparameters.regularisation,
+        samples_per_class=train_class_sample_count.tolist(),
         num_classes=len(classes),
         temporal_stack=cfg.dataset.temporal_stack,
         device=DEVICE
