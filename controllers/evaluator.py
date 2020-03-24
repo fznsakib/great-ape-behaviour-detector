@@ -8,6 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 from pathlib import Path
 from tqdm import tqdm
 from tabulate import tabulate
+from statistics import mean
 
 import utils.metrics as metrics
 from utils.utils import *
@@ -52,9 +53,11 @@ class Evaluator:
                 # Accumulate predictions against ground truth labels
                 prediction = logits.argmax().item()
                 
+                logits = (logits.detach().cpu()).numpy()
+                
                 # Collect reulsts for metrics
                 results["labels"].append(label.item())
-                results["logits"].append(logits.tolist())
+                results["logits"].append(logits[0].tolist())
                 results["predictions"].append(prediction)
 
                 # Insert results to dictionary
@@ -74,7 +77,7 @@ class Evaluator:
         top1, top3 = metrics.compute_topk_accuracy(
             torch.LongTensor(results["logits"]), torch.LongTensor(results["labels"]), topk=(1, 3)
         )
-
+        
         # Get per class accuracies and sort by label value (0...9)
         class_accuracy = metrics.compute_class_accuracy(results["labels"], results["predictions"])
         class_accuracy_average = mean(class_accuracy.values())
