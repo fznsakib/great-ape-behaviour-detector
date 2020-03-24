@@ -68,10 +68,6 @@ class GreatApeDataset(torch.utils.data.Dataset):
             ]
         )
         self.spatial_augmentation_transform = [
-            # transforms.ColorJitter(brightness=0.5),
-            # transforms.ColorJitter(contrast=0.5),
-            # transforms.ColorJitter(saturation=0.5),
-            # transforms.ColorJitter(hue=0.5),
             # transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
             # transforms.RandomHorizontalFlip(p=1),
             # transforms.RandomPerspective(p=1),
@@ -125,7 +121,6 @@ class GreatApeDataset(torch.utils.data.Dataset):
 
         # Get ape and its coordinates
         ape = get_ape_by_id(self.annotations_dir, video, spatial_frame_no, ape_id)
-        # print(ape, video, ape_id, start_frame, spatial_frame_no)
         
         coordinates = get_ape_coordinates(ape)
 
