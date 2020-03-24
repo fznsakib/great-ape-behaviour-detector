@@ -56,19 +56,19 @@ class Trainer:
             
             data_load_start_time = time.time()
 
-            for i, (spatial_data, temporal_data, labels, metadata) in enumerate(self.train_loader):
+            for i, (data, labels, metadata) in enumerate(self.train_loader):
                 
                 # Set gradients to zero
                 self.cnn.optimiser.zero_grad()
 
-                spatial_data = spatial_data.to(self.device)
-                temporal_data = temporal_data.to(self.device)
+                data = data.to(self.device)
+                # temporal_data = temporal_data.to(self.device)
                 labels = labels.to(self.device)
 
                 data_load_end_time = time.time()
 
                 # Compute the forward pass of the model
-                logits = self.cnn.model(spatial_data, temporal_data)
+                logits = self.cnn.model(data)
 
                 # Compute the loss using model criterion and store it
                 loss = self.cnn.criterion(logits, labels)
@@ -179,15 +179,15 @@ class Trainer:
 
         # No need to track gradients for validation, we're not optimizing.
         with torch.no_grad():
-            for i, (spatial_data, temporal_data, labels, metadata) in enumerate(
+            for i, (data, labels, metadata) in enumerate(
                 tqdm(self.test_loader, desc="Validation", leave=False, unit="batch")
             ):
 
-                spatial_data = spatial_data.to(self.device)
-                temporal_data = temporal_data.to(self.device)
+                data = data.to(self.device)
+                # temporal_data = temporal_data.to(self.device)
                 labels = labels.to(self.device)
 
-                logits = self.cnn.model(spatial_data, temporal_data)
+                logits = self.cnn.model(data)
 
                 loss = self.cnn.criterion(logits, labels)
 
@@ -273,7 +273,5 @@ class Trainer:
         ]
 
         print(tabulate(validation_results, tablefmt="fancy_grid"))
-
-        # TODO: print per class accuracy in separate table
 
         return top1, average_loss

@@ -80,16 +80,16 @@ class CNN:
         self.accuracy = 0
         self.device = device
 
-        spatial_model = initialise_model(
+        self.model = initialise_model(
             model_name=model_name, pretrained=True, num_classes=num_classes, channels=3
         )
         
-        temporal_model = initialise_model(
-            model_name=model_name, pretrained=False, num_classes=num_classes, channels=temporal_stack*2
-        )
+        # self.model = initialise_model(
+        #     model_name=model_name, pretrained=False, num_classes=num_classes, channels=temporal_stack*2
+        # )
         
-        self.model = FusionNet(spatial_model, temporal_model, num_classes)
-
+        # self.model = FusionNet(spatial_model, temporal_model, num_classes)
+        
         # Send the model to GPU
         self.model = self.model.to(device)
 

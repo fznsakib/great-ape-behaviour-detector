@@ -182,7 +182,8 @@ class GreatApeDataset(torch.utils.data.Dataset):
         """
         metadata = {"ape_id": ape_id, "start_frame": start_frame, "video": video}
 
-        return spatial_data, temporal_data, label, metadata
+        # return spatial_data, temporal_data, label, metadata
+        return spatial_data, label, metadata
 
     def initialise_dataset(self):
         """

@@ -1,10 +1,10 @@
 {
-    "name": "dataaug_all",
+    "name": "spatial_no_sampler",
     "mode": "train",
     "resume": false,
     "best" : false,
     "model": "resnet18",
-    "loss": "focal",
+    "loss": "cross_entropy",
     "log": true,
     "bucket": "faizaanbucket",
     "hyperparameters": {
@@ -28,10 +28,10 @@
         "activity_duration_threshold": 72
     },
     "dataloader": {
-        "batch_size": 35,
+        "batch_size": 32,
         "shuffle": false,
         "worker_count": 1,
-        "sampler": true
+        "sampler": false
     },
     "frequencies": {
         "log": 1,
