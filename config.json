@@ -1,10 +1,10 @@
 {
-    "name": "dataaug_all",
+    "name": "LSTM_BPTT_batch36",
     "mode": "train",
     "resume": false,
     "best" : false,
     "model": "resnet18",
-    "loss": "focal",
+    "loss": "cross_entropy",
     "log": true,
     "bucket": "faizaanbucket",
     "hyperparameters": {
@@ -23,12 +23,12 @@
         "splits": "../scratch/data/splits"
     },
     "dataset": {
-        "sample_interval": 10,
-        "temporal_stack": 5,
-        "activity_duration_threshold": 72
+        "sample_interval": 30,
+        "temporal_stack": 30,
+        "activity_duration_threshold": 60
     },
     "dataloader": {
-        "batch_size": 35,
+        "batch_size": 36,
         "shuffle": false,
         "worker_count": 1,
         "sampler": true

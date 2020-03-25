@@ -2,6 +2,7 @@ import time
 import torch
 import torch.nn as nn
 import numpy as np
+import gc
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from pathlib import Path
@@ -56,19 +57,18 @@ class Trainer:
             
             data_load_start_time = time.time()
 
-            for i, (spatial_data, temporal_data, labels, metadata) in enumerate(self.train_loader):
+            for i, (spatial_data, labels, metadata) in enumerate(self.train_loader):
                 
                 # Set gradients to zero
                 self.cnn.optimiser.zero_grad()
 
                 spatial_data = spatial_data.to(self.device)
-                temporal_data = temporal_data.to(self.device)
                 labels = labels.to(self.device)
 
                 data_load_end_time = time.time()
 
                 # Compute the forward pass of the model
-                logits = self.cnn.model(spatial_data, temporal_data)
+                logits = self.cnn.model(spatial_data)
 
                 # Compute the loss using model criterion and store it
                 loss = self.cnn.criterion(logits, labels)
@@ -78,6 +78,9 @@ class Trainer:
 
                 # Step the optimiser
                 self.cnn.optimiser.step()
+                
+                torch.cuda.empty_cache()
+                gc.collect()
 
                 # Compute accuracy
                 with torch.no_grad():
@@ -179,15 +182,14 @@ class Trainer:
 
         # No need to track gradients for validation, we're not optimizing.
         with torch.no_grad():
-            for i, (spatial_data, temporal_data, labels, metadata) in enumerate(
+            for i, (spatial_data, labels, metadata) in enumerate(
                 tqdm(self.test_loader, desc="Validation", leave=False, unit="batch")
             ):
 
                 spatial_data = spatial_data.to(self.device)
-                temporal_data = temporal_data.to(self.device)
                 labels = labels.to(self.device)
 
-                logits = self.cnn.model(spatial_data, temporal_data)
+                logits = self.cnn.model(spatial_data)
 
                 loss = self.cnn.criterion(logits, labels)
 

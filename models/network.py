@@ -2,6 +2,7 @@ import torch.nn as nn
 import torchvision.models as models
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.autograd import Variable
 from torchvision import models
 
 import models.resnet as resnet
@@ -37,7 +38,6 @@ class FusionNet(nn.Module):
         # for param in self.spatial.parameters():
         #     param.requires_grad = False
         
-        
         self.temporal = nn.Sequential(*list(temporal.children())[:-2])
         
         self.layer1 = nn.Sequential(
@@ -70,7 +70,40 @@ class FusionNet(nn.Module):
         cnn_out = cnn_out.view(cnn_out.size(0), -1)
         out = self.fc(cnn_out)
         return out
+
+class LSTMNet(nn.Module):
+    def __init__(self, model, num_classes, lstm_layers, hidden_size, dropout, device):
+        super(LSTMNet, self).__init__()
+        self.hidden_size = hidden_size
+        self.lstm_layers = lstm_layers
+        self.num_classes = num_classes
+        self.device = device
+        
+        self.cnn = nn.Sequential(*list(model.children())[:-1])
+        self.lstm = nn.LSTM(input_size = 512,
+                    hidden_size = hidden_size,
+                    num_layers = lstm_layers,
+                    batch_first = True,
+                    dropout = dropout)
+        self.fc = nn.Linear(hidden_size, num_classes)
     
+    def forward(self, data):
+        # Initialize hidden state with zeros
+        h0 = torch.zeros(self.lstm_layers, data.size(0), self.hidden_size).requires_grad_().to(self.device)
+
+        # Initialize cell state
+        c0 = torch.zeros(self.lstm_layers, data.size(0), self.hidden_size).requires_grad_().to(self.device)
+        
+        batch_size, seq_length, c, h, w = data.shape
+        data = data.view(batch_size * seq_length, c, h, w)
+        out = self.cnn(data)
+        out = out.view(batch_size, seq_length, -1)
+        # out, _ = self.lstm(out)
+        out, (hn, cn) = self.lstm(out, (h0.detach(), c0.detach()))
+        out = out[:, -1, :]
+                
+        return self.fc(out)
+
 class CNN:
     def __init__(self, model_name, loss, lr, regularisation, num_classes, temporal_stack, device):
         super().__init__()
@@ -84,11 +117,11 @@ class CNN:
             model_name=model_name, pretrained=True, num_classes=num_classes, channels=3
         )
         
-        temporal_model = initialise_model(
-            model_name=model_name, pretrained=False, num_classes=num_classes, channels=temporal_stack*2
-        )
+        # temporal_model = initialise_model(
+        #     model_name=model_name, pretrained=False, num_classes=num_classes, channels=temporal_stack*2
+        # )
         
-        self.model = FusionNet(spatial_model, temporal_model, num_classes)
+        self.model = LSTMNet(spatial_model, num_classes, 1, 512, 0, device)
 
         # Send the model to GPU
         self.model = self.model.to(device)

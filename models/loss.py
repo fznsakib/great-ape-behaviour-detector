@@ -7,7 +7,7 @@ from kornia.losses import FocalLoss
 
 def initialise_loss(loss):
     loss_initialisers = {
-        "focal": FocalLoss(alpha=0, gamma=0, reduction='mean'),
+        "focal": FocalLoss(alpha=0, gamma=1, reduction='mean'),
         "cross_entropy": nn.CrossEntropyLoss()
     }
     

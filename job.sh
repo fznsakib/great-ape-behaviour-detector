@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --job-name dataaug_all
+#SBATCH --job-name LSTM_BPTT_batch36
 #SBATCH --gres gpu:1
 #SBATCH --partition gpu
-#SBATCH --time 0-08:00
-#SBATCH --mem=64GB
-#SBATCH --output output_dataaug_all
+#SBATCH --time 0-10:00
+#SBATCH --mem=96GB
+#SBATCH --output output_LSTM_BPTT_batch36
 
 # Print some information about the job
 echo "Running on host $(hostname)"
