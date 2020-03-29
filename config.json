@@ -1,11 +1,11 @@
 {
-    "name": "dataaug_all",
+    "name": "twostream_3D_conv_LSTM",
     "mode": "train",
     "resume": false,
     "best" : false,
     "model": "resnet18",
-    "loss": "focal",
-    "log": true,
+    "loss": "cross_entropy",
+    "log": false,
     "bucket": "faizaanbucket",
     "hyperparameters": {
         "epochs": 50,

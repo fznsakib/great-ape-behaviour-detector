@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --job-name dataaug_all
+#SBATCH --job-name twostream_3D_conv_LSTM
 #SBATCH --gres gpu:1
 #SBATCH --partition gpu
-#SBATCH --time 0-08:00
+#SBATCH --time 0-10:00
 #SBATCH --mem=64GB
-#SBATCH --output output_dataaug_all
+#SBATCH --output output_twostream_3D_conv_LSTM
 
 # Print some information about the job
 echo "Running on host $(hostname)"
