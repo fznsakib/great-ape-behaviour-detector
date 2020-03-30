@@ -79,47 +79,55 @@ class LSTMFusionNet(nn.Module):
         self.num_classes = num_classes
         self.device = device
 
-        self.spatial = nn.Sequential(*list(spatial.children())[:-2])
-        self.temporal = nn.Sequential(*list(temporal.children())[:-2])
+        self.spatial = nn.Sequential(*list(spatial.children())[:-1])
+        self.temporal = nn.Sequential(*list(temporal.children())[:-1])
         
-        self.layer1 = nn.Sequential(
-            nn.Conv3d(1024, 512, 1, stride=1, padding=1, dilation=1, bias=True),
-            nn.ReLU(),
-            # nn.MaxPool3d(kernel_size=2, stride=2),
-        )
-        
-        self.lstm = nn.LSTM(input_size = 243,
+        self.rnn = nn.RNN(input_size = 512,
                     hidden_size = hidden_size,
                     num_layers = lstm_layers,
                     batch_first = True,
-                    dropout = dropout)
-        self.fc = nn.Linear(hidden_size, num_classes)
+                    dropout = 0)
+        
+        self.lstm = nn.LSTM(input_size = 512,
+                    hidden_size = hidden_size,
+                    num_layers = lstm_layers,
+                    batch_first = True,
+                    dropout = 0)
+        
+        self.fc1 = nn.Linear(1024, 512)
+        self.fc2 = nn.Linear(512, num_classes)
 
     def forward(self, spatial_data, temporal_data):
-        x1 = self.spatial(spatial_data)
-        x2 = self.temporal(temporal_data)
-
-        y = torch.cat((x1, x2), dim=1)
+        # Spatial forward
+        h0_spatial = torch.zeros(self.lstm_layers, spatial_data.size(0), self.hidden_size).requires_grad_().to(self.device)
+        c0_spatial = torch.zeros(self.lstm_layers, spatial_data.size(0), self.hidden_size).requires_grad_().to(self.device)
         
-        for i in range(x1.size(1)):
-            y[:, (2 * i), :, :] = x1[:, i, :, :]
-            y[:, (2 * i + 1), :, :] = x2[:, i, :, :]
+        batch_size, seq_length, c, h, w = spatial_data.shape
+        spatial_data = spatial_data.view(batch_size * seq_length, c, h, w)
+        spatial_out = self.spatial(spatial_data)
+        spatial_out = spatial_out.view(batch_size, seq_length, -1)
         
-        y = y.view(y.size(0), 1024, 1, 7, 7)
+        spatial_out, (hn_spatial, cn_spatial) = self.lstm(spatial_out, (h0_spatial.detach(), c0_spatial.detach()))
+        spatial_out = spatial_out[:, -1, :]
         
-        cnn_out = self.layer1(y)
-        # cnn_out.size() = [35, 512, 243]
-        cnn_out = cnn_out.view(cnn_out.size(0), cnn_out.size(1), -1)
-            
-        # Initialize hidden state with zeros
-        h0 = torch.zeros(self.lstm_layers, cnn_out.size(0), self.hidden_size).requires_grad_().to(self.device)
-        # Initialize cell state
-        c0 = torch.zeros(self.lstm_layers, cnn_out.size(0), self.hidden_size).requires_grad_().to(self.device)
+        # Temporal forward
+        h0_temporal = torch.zeros(self.lstm_layers, temporal_data.size(0), self.hidden_size).requires_grad_().to(self.device)
+        c0_temporal = torch.zeros(self.lstm_layers, temporal_data.size(0), self.hidden_size).requires_grad_().to(self.device)
         
-        out, (hn, cn) = self.lstm(cnn_out, (h0.detach(), c0.detach()))
-        out = out[:, -1, :]
-                        
-        return self.fc(out)
+        batch_size, seq_length, c, h, w = temporal_data.shape
+        temporal_data = temporal_data.view(batch_size * seq_length, c, h, w)
+        temporal_out = self.temporal(temporal_data)
+        temporal_out = temporal_out.view(batch_size, seq_length, -1)
+        
+        temporal_out, (hn_temporal, cn_temporal) = self.lstm(temporal_out, (h0_temporal.detach(), c0_temporal.detach()))
+        temporal_out = temporal_out[:, -1, :]
+        
+        # concatenate features
+        fused_out = torch.cat((spatial_out, temporal_out), dim=1)
+        
+        fused_out = F.relu(self.fc1(fused_out))
+                               
+        return self.fc2(fused_out)
     
 class CNN:
     def __init__(self, model_name, loss, lr, regularisation, num_classes, temporal_stack, device):
@@ -135,7 +143,7 @@ class CNN:
         )
         
         temporal_model = initialise_model(
-            model_name=model_name, pretrained=False, num_classes=num_classes, channels=temporal_stack*2
+            model_name=model_name, pretrained=False, num_classes=num_classes, channels=2
         )
         
         self.model = LSTMFusionNet(spatial_model, temporal_model, num_classes, 1, 512, 0, device)

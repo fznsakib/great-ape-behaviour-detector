@@ -1,11 +1,11 @@
 {
-    "name": "twostream_3D_conv_LSTM",
+    "name": "twostream_LSTMRNN_interval_30",
     "mode": "train",
     "resume": false,
     "best" : false,
     "model": "resnet18",
     "loss": "cross_entropy",
-    "log": false,
+    "log": true,
     "bucket": "faizaanbucket",
     "hyperparameters": {
         "epochs": 50,
@@ -23,12 +23,12 @@
         "splits": "../scratch/data/splits"
     },
     "dataset": {
-        "sample_interval": 10,
-        "temporal_stack": 5,
-        "activity_duration_threshold": 72
+        "sample_interval": 30,
+        "temporal_stack": 30,
+        "activity_duration_threshold": 60
     },
     "dataloader": {
-        "batch_size": 35,
+        "batch_size": 9,
         "shuffle": false,
         "worker_count": 1,
         "sampler": true
