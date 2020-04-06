@@ -111,6 +111,7 @@ def find_sample(samples, index):
                 return (
                     key,
                     samples[key][i]["ape_id"],
+                    samples[key][i]["ape_class"],
                     samples[key][i]["start_frame"],
                     samples[key][i]["activity"],
                 )

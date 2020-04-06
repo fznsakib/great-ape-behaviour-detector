@@ -109,7 +109,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         
         # Get required sample
-        video, ape_id, start_frame, activity = find_sample(self.samples, index)
+        video, ape_id, ape_class, start_frame, activity = find_sample(self.samples, index)
         
         """
         Get frames
@@ -142,11 +142,16 @@ class GreatApeDataset(torch.utils.data.Dataset):
         Label
         """
         label = self.classes.index(activity)
+        
+        if ape_class == 'chimpanzee':
+            ape_class = 0
+        elif ape_class == 'gorilla':
+            ape_class = 1
 
         """
         Other data
         """
-        metadata = {"ape_id": ape_id, "start_frame": start_frame, "video": video}
+        metadata = {"ape_id": ape_id, "ape_class": ape_class, "start_frame": start_frame, "video": video}
 
         return data, label, metadata
 
@@ -182,6 +187,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                         # Check if this ape has the same activity for atleast the next activity_duration_threshold frames
                         current_activity = ape.find("activity").text
                         valid_frames = 1
+                        ape_class = get_species(ape)
 
                         for look_ahead_frame_no in range(frame_no + 1, no_of_frames + 1):
                             ape = get_ape_by_id(
@@ -235,6 +241,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                                 self.samples[video].append(
                                     {
                                         "ape_id": current_ape_id,
+                                        "ape_class": ape_class,
                                         "activity": current_activity,
                                         "start_frame": valid_frame_no,
                                     }
@@ -274,6 +281,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                         continue
                     else:
                         activities = []
+                        ape_class = get_species(ape)
                         insufficient_apes = False
 
                         # Check that this ape exists for the next n frames
@@ -313,6 +321,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                             self.samples[video].append(
                                 {
                                     "ape_id": current_ape_id,
+                                    "ape_class": ape_class,
                                     "activity": activity,
                                     "start_frame": frame_no,
                                 }

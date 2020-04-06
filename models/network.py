@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch.nn.functional as F
 import torchvision.models as models
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -85,9 +86,11 @@ class LSTMNet(nn.Module):
                     num_layers = lstm_layers,
                     batch_first = True,
                     dropout = dropout)
-        self.fc = nn.Linear(hidden_size, num_classes)
+        self.fc1 = nn.Linear(hidden_size + 2, 512)
+        self.fc2 = nn.Linear(512, num_classes)
+        self.dropout = nn.Dropout(p=0.5)
     
-    def forward(self, data):
+    def forward(self, data, ape_class):
         # Initialize hidden state with zeros
         h0 = torch.zeros(self.lstm_layers, data.size(0), self.hidden_size).requires_grad_().to(self.device)
 
@@ -98,11 +101,17 @@ class LSTMNet(nn.Module):
         data = data.view(batch_size * seq_length, c, h, w)
         out = self.cnn(data)
         out = out.view(batch_size, seq_length, -1)
-        # out, _ = self.lstm(out)
+
         out, (hn, cn) = self.lstm(out, (h0.detach(), c0.detach()))
         out = out[:, -1, :]
-                
-        return self.fc(out)
+        
+        one_hot = F.one_hot(ape_class, num_classes=2).type(torch.FloatTensor).to(self.device)
+        
+        out = torch.cat((out, one_hot), dim=1)   
+        out = self.fc1(out)
+        out = self.dropout(out)
+        out = F.relu(out)
+        return self.fc2(out)
 
 class CNN:
     def __init__(self, model_name, loss, lr, regularisation, num_classes, temporal_stack, device):
@@ -121,7 +130,7 @@ class CNN:
         #     model_name=model_name, pretrained=False, num_classes=num_classes, channels=temporal_stack*2
         # )
         
-        self.model = LSTMNet(spatial_model, num_classes, 1, 512, 0, device)
+        self.model = LSTMNet(spatial_model, num_classes, 1, 1024, 0, device)
 
         # Send the model to GPU
         self.model = self.model.to(device)

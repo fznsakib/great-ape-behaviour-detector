@@ -1,5 +1,5 @@
 {
-    "name": "LSTM_BPTT_batch36",
+    "name": "LSTM_classencoded_hidden1024_dropout0.5",
     "mode": "train",
     "resume": false,
     "best" : false,
@@ -28,7 +28,7 @@
         "activity_duration_threshold": 60
     },
     "dataloader": {
-        "batch_size": 36,
+        "batch_size": 18,
         "shuffle": false,
         "worker_count": 1,
         "sampler": true

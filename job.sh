@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --job-name LSTM_BPTT_batch36
+#SBATCH --job-name LSTM_classencoded_hidden1024_dropout0.5
 #SBATCH --gres gpu:1
 #SBATCH --partition gpu
 #SBATCH --time 0-10:00
-#SBATCH --mem=96GB
-#SBATCH --output output_LSTM_BPTT_batch36
+#SBATCH --mem=100GB
+#SBATCH --output output_LSTM_classencoded_hidden1024_dropout0.5
 
 # Print some information about the job
 echo "Running on host $(hostname)"

@@ -68,7 +68,7 @@ class Trainer:
                 data_load_end_time = time.time()
 
                 # Compute the forward pass of the model
-                logits = self.cnn.model(spatial_data)
+                logits = self.cnn.model(spatial_data, metadata['ape_class'])
 
                 # Compute the loss using model criterion and store it
                 loss = self.cnn.criterion(logits, labels)
@@ -189,7 +189,7 @@ class Trainer:
                 spatial_data = spatial_data.to(self.device)
                 labels = labels.to(self.device)
 
-                logits = self.cnn.model(spatial_data)
+                logits = self.cnn.model(spatial_data, metadata['ape_class'])
 
                 loss = self.cnn.criterion(logits, labels)
 
