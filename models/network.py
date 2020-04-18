@@ -85,7 +85,7 @@ class CNN:
         )
         
         temporal_model = initialise_model(
-            model_name=model_name, pretrained=False, num_classes=num_classes, channels=temporal_stack*2
+            model_name=model_name, pretrained=True, num_classes=num_classes, channels=temporal_stack*2
         )
         
         self.model = FusionNet(spatial_model, temporal_model, num_classes)
@@ -95,7 +95,7 @@ class CNN:
 
         self.criterion = initialise_loss(loss)
         self.optimiser = optim.SGD(self.model.parameters(), lr=self.lr, momentum=0.9, weight_decay=regularisation)
-        self.scheduler = ReduceLROnPlateau(self.optimiser, "min", patience=1, verbose=True)
+        self.scheduler = ReduceLROnPlateau(self.optimiser, "min", patience=5, verbose=True)
 
     def load_checkpoint(self, name, checkpoint_path, best=False):
         checkpoint_file_path = f"{checkpoint_path}/{name}/model"
