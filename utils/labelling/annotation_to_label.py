@@ -2,11 +2,14 @@ import xml.etree.ElementTree as ET
 import pickle
 import os
 import sys
+from tqdm import tqdm
 from os import listdir, getcwd
 from os.path import join
 
 # Include classes of dataset
 classes = ["chimpanzee", "gorilla"]
+dataset_path = "/mnt/storage/home/ss16161/scratch/data"
+# video_names = open(sys.argv[1]).read().strip().split()
 
 # Normalise coordinates to [0, 1] according to dimensions
 def convert(size, box):
@@ -26,14 +29,14 @@ def convert(size, box):
 # Convert XML file to label .txt
 def convert_annotation(frame_no, image_id):
 
-    in_file_path = f"../dataset/behaviour_annotations/{image_id}/{image_id}_frame_{frame_no}.xml"
+    in_file_path = f"{dataset_path}/annotations/{image_id}/{image_id}_frame_{frame_no}.xml"
     if not os.path.isfile(in_file_path):
         print(f"frame {frame_no} does not exist for video {image_id}")
         return
 
     in_file = open(in_file_path)
 
-    out_file_path = f"../dataset/labels/{image_id}"
+    out_file_path = f"{dataset_path}/frames/rgb/{image_id}"
 
     # Create folder for video if it does not exit
     if not os.path.exists(out_file_path):
@@ -48,7 +51,6 @@ def convert_annotation(frame_no, image_id):
     w = int(size.find("width").text)
     h = int(size.find("height").text)
 
-    out_file.write(f"frame: {frame_no}\n")
     for obj in root.iter("object"):
         cls = obj.find("name").text
         if cls not in classes:
@@ -77,60 +79,54 @@ def convert_annotation(frame_no, image_id):
         # out_file.write('id ' + str(object_id) + " " + " ".join([str(a) for a in bb]) + '\n')
 
 
-video_names = [sys.argv[1]]
-# video_names = open(sys.argv[1]).read().strip().split()
+# video_names = [sys.argv[1]]
+# # video_names = open(sys.argv[1]).read().strip().split()
 
-for i, video_id in enumerate(video_names):
-    print(f"Converting training annotations of {video_id}.mp4 ({i}/{len(video_names)})")
-    no_of_frames = len(os.listdir(f"../dataset/annotations/{video_id}"))
+# for i, video_id in enumerate(video_names):
+#     print(f"Converting training annotations of {video_id}.mp4 ({i}/{len(video_names)})")
+#     no_of_frames = len(os.listdir(f"../dataset/annotations/{video_id}"))
 
-    # do it for all frames
-    for frame_no in range(1, no_of_frames + 1):
-        convert_annotation(frame_no, video_id)
+#     # do it for all frames
+#     for frame_no in range(1, no_of_frames + 1):
+#         convert_annotation(frame_no, video_id)
 
-exit()
+# exit()
 
-image_ids_train = open("../dataset/splits/trainingdata.txt").read().strip().split()
-image_ids_val = open("../dataset/splits/validationdata.txt").read().strip().split()
-image_ids_test = open("../dataset/splits/testdata.txt").read().strip().split()
+image_ids_train = open(f"{dataset_path}/splits/trainingdata.txt").read().strip().split()
+image_ids_val = open(f"{dataset_path}/splits/validationdata.txt").read().strip().split()
+image_ids_test = open(f"{dataset_path}/splits/testdata.txt").read().strip().split()
 
-list_file_train = open("../train.txt", "w")
-list_file_val = open("../val.txt", "w")
-list_file_test = open("../test.txt", "w")
-
-completed = []
-completed = [f for f in sorted(os.listdir("../dataset/frames"))]
+list_file_train = open("train.txt", "w")
+list_file_val = open("val.txt", "w")
+list_file_test = open("test.txt", "w")
 
 # Convert training annotations
-for i, image_id in enumerate(image_ids_train):
-    print(f"Converting training annotations of {image_id}.mp4 ({i}/{len(image_ids_train)})")
-    no_of_frames = len(os.listdir(f"../dataset/annotations/{image_id}"))
+for i, image_id in enumerate(tqdm(image_ids_train)):
+    no_of_frames = len(os.listdir(f"{dataset_path}/annotations/{image_id}"))
 
     # do it for all frames
     for frame_no in range(1, no_of_frames + 1):
         convert_annotation(frame_no, image_id)
-        list_file_train.write(f"../dataset/frames/{image_id}/{image_id}_frame_{frame_no}.jpg\n")
+        list_file_train.write(f"{dataset_path}/frames/rgb/{image_id}/{image_id}_frame_{frame_no}.jpg\n")
 
 list_file_train.close()
 
 # # Convert validation annotations
-for i, image_id in enumerate(image_ids_val):
-    print(f"Converting training annotations of {image_id}.mp4 ({i}/{len(image_ids_val)})")
-    no_of_frames = len(os.listdir(f"../dataset/annotations/{image_id}"))
+for i, image_id in enumerate(tqdm(image_ids_val)):
+    no_of_frames = len(os.listdir(f"{dataset_path}/annotations/{image_id}"))
 
     for frame_no in range(1, no_of_frames + 1):
         convert_annotation(frame_no, image_id)
-        list_file_val.write(f"../dataset/frames/{image_id}/{image_id}_frame_{frame_no}.jpg\n")
+        list_file_val.write(f"{dataset_path}/frames/rgb/{image_id}/{image_id}_frame_{frame_no}.jpg\n")
 
 list_file_val.close()
 
 # Convert test annotations
-for i, image_id in enumerate(image_ids_test):
-    print(f"Converting training annotations of {image_id}.mp4 ({i}/{len(image_ids_test)})")
-    no_of_frames = len(os.listdir(f"../dataset/annotations/{image_id}"))
+for i, image_id in enumerate(tqdm(image_ids_test)):
+    no_of_frames = len(os.listdir(f"{dataset_path}/annotations/{image_id}"))
 
     for frame_no in range(1, no_of_frames + 1):
         convert_annotation(frame_no, image_id)
-        list_file_test.write(f"../dataset/frames/{image_id}/{image_id}_frame_{frame_no}.jpg\n")
+        list_file_test.write(f"{dataset_path}/frames/rgb/{image_id}/{image_id}_frame_{frame_no}.jpg\n")
 
 list_file_test.close()
