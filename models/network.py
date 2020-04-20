@@ -82,17 +82,17 @@ class LSTMFusionNet(nn.Module):
         self.spatial = nn.Sequential(*list(spatial.children())[:-1])
         self.temporal = nn.Sequential(*list(temporal.children())[:-1])
         
-        self.rnn = nn.RNN(input_size = 512,
+        self.lstm_spatial = nn.LSTM(input_size = 512,
                     hidden_size = hidden_size,
                     num_layers = lstm_layers,
                     batch_first = True,
-                    dropout = 0)
+                    dropout = dropout)
         
-        self.lstm = nn.LSTM(input_size = 512,
+        self.lstm_temporal = nn.LSTM(input_size = 512,
                     hidden_size = hidden_size,
                     num_layers = lstm_layers,
                     batch_first = True,
-                    dropout = 0)
+                    dropout = dropout)
         
         self.fc1 = nn.Linear(1024, 512)
         self.fc2 = nn.Linear(512, num_classes)
@@ -107,7 +107,7 @@ class LSTMFusionNet(nn.Module):
         spatial_out = self.spatial(spatial_data)
         spatial_out = spatial_out.view(batch_size, seq_length, -1)
         
-        spatial_out, (hn_spatial, cn_spatial) = self.lstm(spatial_out, (h0_spatial.detach(), c0_spatial.detach()))
+        spatial_out, (hn_spatial, cn_spatial) = self.lstm_spatial(spatial_out, (h0_spatial.detach(), c0_spatial.detach()))
         spatial_out = spatial_out[:, -1, :]
         
         # Temporal forward
@@ -119,7 +119,7 @@ class LSTMFusionNet(nn.Module):
         temporal_out = self.temporal(temporal_data)
         temporal_out = temporal_out.view(batch_size, seq_length, -1)
         
-        temporal_out, (hn_temporal, cn_temporal) = self.lstm(temporal_out, (h0_temporal.detach(), c0_temporal.detach()))
+        temporal_out, (hn_temporal, cn_temporal) = self.lstm_temporal(temporal_out, (h0_temporal.detach(), c0_temporal.detach()))
         temporal_out = temporal_out[:, -1, :]
         
         # concatenate features
@@ -143,7 +143,7 @@ class CNN:
         )
         
         temporal_model = initialise_model(
-            model_name=model_name, pretrained=False, num_classes=num_classes, channels=2
+            model_name=model_name, pretrained=True, num_classes=num_classes, channels=2
         )
         
         self.model = LSTMFusionNet(spatial_model, temporal_model, num_classes, 1, 512, 0, device)
@@ -153,7 +153,7 @@ class CNN:
 
         self.criterion = initialise_loss(loss)
         self.optimiser = optim.SGD(self.model.parameters(), lr=self.lr, momentum=0.9, weight_decay=regularisation)
-        self.scheduler = ReduceLROnPlateau(self.optimiser, "min", patience=1, verbose=True)
+        self.scheduler = ReduceLROnPlateau(self.optimiser, "min", patience=5, verbose=True)
 
     def load_checkpoint(self, name, checkpoint_path, best=False):
         checkpoint_file_path = f"{checkpoint_path}/{name}/model"
