@@ -155,6 +155,7 @@ class CNN:
         self.optimiser = optim.SGD(self.model.parameters(), lr=self.lr, momentum=0.9, weight_decay=regularisation)
         self.scheduler = ReduceLROnPlateau(self.optimiser, "min", patience=3, verbose=True)
 
+
     def load_checkpoint(self, name, checkpoint_path, best=False):
         checkpoint_file_path = f"{checkpoint_path}/{name}/model"
 
