@@ -24,16 +24,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
     """
 
     def __init__(
-        self,
-        mode,
-        sample_interval,
-        temporal_stack,
-        activity_duration_threshold,
-        video_names,
-        classes,
-        frame_dir,
-        annotations_dir,
-        device
+        self, cfg, mode, video_names, classes, device,
     ):
         """
         Args:
@@ -46,13 +37,13 @@ class GreatApeDataset(torch.utils.data.Dataset):
         super(GreatApeDataset, self).__init__()
 
         self.mode = mode
-        self.sample_interval = sample_interval
-        self.temporal_stack = temporal_stack
-        self.activity_duration_threshold = activity_duration_threshold
+        self.sample_interval = cfg.dataset.sample_interval
+        self.temporal_stack = cfg.dataset.sequence_length
+        self.activity_duration_threshold = cfg.dataset.activity_duration_threshold
         self.video_names = open(video_names).read().strip().split()
         self.classes = classes
-        self.frame_dir = frame_dir
-        self.annotations_dir = annotations_dir
+        self.frame_dir = cfg.paths.frames
+        self.annotations_dir = cfg.paths.annotations
         self.spatial_transform = transforms.Compose(
             [
                 transforms.Resize((224, 224)),
@@ -67,16 +58,12 @@ class GreatApeDataset(torch.utils.data.Dataset):
                 transforms.Normalize(mean=[0.5], std=[0.5]),
             ]
         )
-        self.spatial_augmentation_transform = [
-            # transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
-            # transforms.RandomHorizontalFlip(p=1),
-            # transforms.RandomRotation(degrees=10),
-        ]
-            
-        self.temporal_augmentation_transform = [
-            # transforms.RandomHorizontalFlip(p=1)
-        ]
-        
+        (
+            self.spatial_augmentation_transform,
+            self.temporal_augmentation_transform,
+        ) = self.initialise_augmentations(cfg.augmentation)
+        self.augmentation_probability = cfg.augmentation.probability
+
         self.labels = 0
         self.samples = {}
         self.samples_by_class = {}
@@ -86,15 +73,13 @@ class GreatApeDataset(torch.utils.data.Dataset):
             self.initialise_dataset()
         elif self.mode == "test" or self.mode == "validation":
             self.initialise_test_dataset()
-            
+
         self.initialise_labels()
         self.initialise_samples_by_class()
-        
+
         DEVICE = torch.device("cuda")
         self.labels = torch.from_numpy(self.labels)
         self.labels = self.labels.to(self.device)
-
-        
 
     def __len__(self):
         # If the length of the dataset has not yet been calculated, then do so and store it
@@ -106,7 +91,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
         return self.size
 
     def __getitem__(self, index):
-        
+
         # Get required sample
         video, ape_id, start_frame, activity = find_sample(self.samples, index)
 
@@ -115,47 +100,49 @@ class GreatApeDataset(torch.utils.data.Dataset):
         """
         spatial_sample = []
         transform_probabilities = []
-        
+
         for i in range(0, len(self.spatial_augmentation_transform)):
             transform_probabilities.append(random.random())
-        
-        
+
         for i in range(0, self.temporal_stack):
             path = f"{self.frame_dir}/rgb/{video}/{video}_frame_{start_frame + i}.jpg"
             spatial_image = Image.open(path)
-            
+
             # Get ape and its coordinates
             ape = get_ape_by_id(self.annotations_dir, video, start_frame + i, ape_id)
             coordinates = get_ape_coordinates(ape)
-            
+
             # Crop around ape
             spatial_image = spatial_image.crop(
                 (coordinates[0], coordinates[1], coordinates[2], coordinates[3])
             )
-            
+
             # Apply augmentation and pre-processing transforms
-            spatial_data = self.apply_augmentation_transforms(spatial_image, self.spatial_augmentation_transform, transform_probabilities)
+            if self.mode == "train":
+                spatial_data = self.apply_augmentation_transforms(
+                    spatial_image, self.spatial_augmentation_transform, transform_probabilities
+                )
             spatial_data = self.spatial_transform(spatial_data)
-            
+
             spatial_sample.append(spatial_data.squeeze_(0))
             spatial_image.close()
-            
+
         spatial_sample = torch.stack(spatial_sample, dim=0)
 
         """
         Temporal Data
         """
         # temporal_data = torch.FloatTensor(2 * self.temporal_stack, 224, 224)
-        
+
         temporal_sample = []
         transform_probabilities = []
-        
+
         for i in range(0, len(self.temporal_augmentation_transform)):
             transform_probabilities.append(random.random())
 
         for i in range(0, self.temporal_stack):
             this_data = []
-            
+
             x_path = f"{self.frame_dir}/horizontal_flow/{video}/{video}_frame_{start_frame + i}.jpg"
             y_path = f"{self.frame_dir}/vertical_flow/{video}/{video}_frame_{start_frame + i}.jpg"
 
@@ -171,15 +158,21 @@ class GreatApeDataset(torch.utils.data.Dataset):
             image_y = image_y.crop((coordinates[0], coordinates[1], coordinates[2], coordinates[3]))
 
             # Apply augmentation and pre-processing transforms for entire stack
-            final_image_x = self.apply_augmentation_transforms(image_x, self.temporal_augmentation_transform, transform_probabilities)
-            final_image_y = self.apply_augmentation_transforms(image_y, self.temporal_augmentation_transform, transform_probabilities)
+            if self.mode == "train":
+                final_image_x = self.apply_augmentation_transforms(
+                    image_x, self.temporal_augmentation_transform, transform_probabilities
+                )
+                final_image_y = self.apply_augmentation_transforms(
+                    image_y, self.temporal_augmentation_transform, transform_probabilities
+                )
+
             final_image_x = self.temporal_transform(final_image_x)
             final_image_y = self.temporal_transform(final_image_y)
-            
+
             this_data.append(final_image_x.squeeze_(0))
             this_data.append(final_image_y.squeeze_(0))
             stacked_data = torch.stack(this_data, dim=0)
-            
+
             temporal_sample.append(stacked_data.squeeze(0))
 
             image_x.close()
@@ -277,7 +270,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                                 # Insert sample
                                 if video not in self.samples.keys():
                                     self.samples[video] = []
-                                    
+
                                 # Keep count of number of labels
                                 self.labels += 1
 
@@ -355,7 +348,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                             # Insert sample
                             if video not in self.samples.keys():
                                 self.samples[video] = []
-                                
+
                             # Keep count of number of labels
                             self.labels += 1
 
@@ -394,23 +387,42 @@ class GreatApeDataset(torch.utils.data.Dataset):
         return samples_by_class
 
     def initialise_labels(self):
-        labels = np.zeros(self.labels, dtype = int)
+        labels = np.zeros(self.labels, dtype=int)
         i = 0
-        
+
         for video in self.samples:
             for annotation in self.samples[video]:
-                label = self.classes.index(annotation['activity'])
+                label = self.classes.index(annotation["activity"])
                 labels[i] = label
                 i += 1
-                
+
         self.labels = labels
-        
+
     def _get_label(self, index):
         return self.labels[index]
-    
+
+    def initialise_augmentations(self, augmentation_cfg):
+
+        spatial_aug = []
+        temporal_aug = []
+
+        if augmentation_cfg.spatial.colour_jitter:
+            spatial_aug.append(
+                transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
+            )
+        if augmentation_cfg.spatial.horizontal_flip:
+            spatial_aug.append(transforms.RandomHorizontalFlip(p=1))
+        if augmentation_cfg.spatial.rotation:
+            spatial_aug.append(transforms.RandomRotation(p=1, degrees=10))
+
+        if augmentation_cfg.temporal.horizontal_flip:
+            temporal_aug.append(transforms.RandomHorizontalFlip(p=1))
+
+        return spatial_aug, temporal_aug
+
     def apply_augmentation_transforms(self, image, augmentations, probabilities):
         for i, aug in enumerate(augmentations):
-            if probabilities[i] > 0.5:
+            if probabilities[i] < self.augmentation_probability:
                 image = aug(image)
-                
+
         return image

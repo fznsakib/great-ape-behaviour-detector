@@ -21,26 +21,27 @@ class ConfigParser:
         # Add all arguments to parser
         self.add_general_arguments()
         self.add_hyperparameter_arguments()
-        self.add_path_arguments()
+        self.add_loss_arguments()
+        self.add_lstm_arguments()
         self.add_dataset_arguments()
         self.add_dataloader_arguments()
+        self.add_augmentation_arguments()
+        self.add_path_arguments()
         self.add_frequency_arguments()
 
         # Create name
         self.config = self.parser.parse_args()
 
         if not self.config.name:
-            if self.config.mode == "test":
-                print("Please specify model name in order to evaluate")
-                exit()
-            self.config.name = "test"
+            print("Please specify model name in order to train/evaluate")
+            exit()
 
         self.config.dataloader.worker_count = cpu_count()
 
         if self.config.mode == "test":
             self.config.dataloader.batch_size = 1
             self.config.dataloader.shuffle = False
-            self.config.dataset.sample_interval = 5
+            self.config.dataset.sequence_length = 20
 
         self.config.paths.annotations = str(self.config.paths.annotations)
         self.config.paths.checkpoints = str(self.config.paths.checkpoints)
@@ -66,10 +67,10 @@ class ConfigParser:
         )
 
         self.parser.add_argument(
-            "--model", default="resnet18", type=str, help="Type of pretrained model to load",
-        )
-        self.parser.add_argument(
-            "--loss", default="cross_entropy", type=str, help="Loss function to use",
+            "--cnn",
+            default="resnet18",
+            type=str,
+            help="Type of pretrained architecture CNN to load",
         )
 
         self.parser.add_argument(
@@ -98,6 +99,107 @@ class ConfigParser:
         )
         self.parser.add_argument(
             "--hyperparameters.regularisation", default=0, type=float, help="L2 regularisation",
+        )
+        self.parser.add_argument(
+            "--hyperparameters.dropout",
+            default=0,
+            type=float,
+            help="Dropout probability in fully connected classifier",
+        )
+
+    def add_loss_arguments(self):
+        self.parser.add_argument(
+            "--loss.function", default="focal", type=str, help="Loss function to use",
+        )
+        self.parser.add_argument(
+            "--loss.cross_entropy.weighted",
+            default=False,
+            type=bool,
+            help="Use weighted variant of cross entropy loss",
+        )
+        self.parser.add_argument(
+            "--loss.focal.alpha", default=1.0, type=float, help="Alpha parameter for focal loss",
+        )
+        self.parser.add_argument(
+            "--loss.focal.gamma", default=1.0, type=float, help="Gamma parameter for focal loss",
+        )
+
+    def add_lstm_arguments(self):
+        self.parser.add_argument(
+            "--lstm.layers", default=1, type=int, help="Number of LSTM layers",
+        )
+        self.parser.add_argument(
+            "--lstm.hidden_units", default=512, type=int, help="Number of hidden units per LSTM",
+        )
+        self.parser.add_argument(
+            "--lstm.dropout", default=0, type=float, help="Dropout for LSTM networks",
+        )
+
+    def add_dataset_arguments(self):
+        self.parser.add_argument(
+            "--dataset.sample_interval",
+            default=10,
+            type=int,
+            help="Frame interval at which samples are taken",
+        )
+        self.parser.add_argument(
+            "--dataset.sequence_length",
+            default=5,
+            type=int,
+            help="Number of frames to consider for sequence",
+        )
+        self.parser.add_argument(
+            "--dataset.activity_duration_threshold",
+            default=72,
+            type=int,
+            help="Threshold at which a stream of activity is considered a valid sample",
+        )
+
+    def add_dataloader_arguments(self):
+        self.parser.add_argument("--dataloader.batch_size", default=32, type=int, help="Batch size")
+        self.parser.add_argument(
+            "--dataloader.shuffle", default=False, type=bool, help="Shuffle data"
+        )
+        self.parser.add_argument(
+            "--dataloader.worker_count", default=1, type=int, help="Number of workers to load data",
+        )
+        self.parser.add_argument(
+            "--dataloader.sampler",
+            default=False,
+            type=bool,
+            help="Use balanced batch sampler for equal number of samples across classes",
+        )
+
+    def add_augmentation_arguments(self):
+        self.parser.add_argument(
+            "--augmentation.probability",
+            default=0,
+            type=float,
+            help="Data augmentation probability threshold",
+        )
+        self.parser.add_argument(
+            "--augmentation.spatial.colour_jitter",
+            default=False,
+            type=bool,
+            help="Colour jitter (brightness, contrast, hue) transformation",
+        )
+        self.parser.add_argument(
+            "--augmentation.spatial.horizontal_flip",
+            default=False,
+            type=bool,
+            help="Horizontal flip transformation for spatial stream",
+        )
+        self.parser.add_argument(
+            "--augmentation.spatial.rotation",
+            default=False,
+            type=bool,
+            help="10 degree rotation transformation",
+        )
+        self.parser.add_argument(
+            "--augmentation.temporal.horizontal_flip",
+            default=False,
+            type=bool,
+            help="Horizontal flip transformation for temporal stream",
         )
 
     def add_path_arguments(self):
@@ -130,38 +232,6 @@ class ConfigParser:
             type=Path,
             help="Path to root of saved model checkpoints",
             action=ActionPath(mode="drw"),
-        )
-
-    def add_dataset_arguments(self):
-        self.parser.add_argument(
-            "--dataset.sample_interval",
-            default=10,
-            type=int,
-            help="Frame interval at which samples are taken",
-        )
-        self.parser.add_argument(
-            "--dataset.temporal_stack",
-            default=5,
-            type=int,
-            help="Number of frames of optical flow to provide the temporal stream",
-        )
-        self.parser.add_argument(
-            "--dataset.activity_duration_threshold",
-            default=72,
-            type=int,
-            help="Threshold at which a stream of activity is considered a valid sample",
-        )
-
-    def add_dataloader_arguments(self):
-        self.parser.add_argument("--dataloader.batch_size", default=32, type=int, help="Batch size")
-        self.parser.add_argument(
-            "--dataloader.shuffle", default=False, type=bool, help="Shuffle data"
-        )
-        self.parser.add_argument(
-            "--dataloader.worker_count", default=1, type=int, help="Number of workers to load data",
-        )
-        self.parser.add_argument(
-            "--dataloader.sampler", default=False, type=bool, help="Use balanced batch sampler for equal number of samples across classes",
         )
 
     def add_frequency_arguments(self):

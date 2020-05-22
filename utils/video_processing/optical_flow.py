@@ -13,16 +13,18 @@ for video in tqdm.tqdm(video_names, leave=False):
     for frame in tqdm.tqdm(range(1, 361), leave=False):
         frame_1_path = f"{frames_path}/rgb/{video}/{video}_frame_{frame}.jpg"
         frame_2_path = f"{frames_path}/rgb/{video}/{video}_frame_{frame + 1}.jpg"
-        
+
         # Check if optical flow frame already exists
-        optical_flow_frame_path = f"{frames_path}/new_flow/horizontal_flow/{video}/{video}_frame_{frame}.jpg"
+        optical_flow_frame_path = (
+            f"{frames_path}/new_flow/horizontal_flow/{video}/{video}_frame_{frame}.jpg"
+        )
         if os.path.exists(optical_flow_frame_path):
             continue
 
         if not os.path.exists(frame_2_path):
             # print(f'Reached the final frame available of video {video}!')
             continue
-        
+
         if not os.path.exists(frames_path):
             # print(f'Frame {frame} does not exist for video {video}')
             continue
@@ -34,8 +36,8 @@ for video in tqdm.tqdm(video_names, leave=False):
         next_frame = cv2.cvtColor(frame_2, cv2.COLOR_BGR2GRAY)
 
         # flow = cv2.calcOpticalFlowFarneback(prev_frame, next_frame, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-        dtvl1=cv2.optflow.createOptFlow_DualTVL1()
-        flow=dtvl1.calc(prev_frame,next_frame,None)
+        dtvl1 = cv2.optflow.createOptFlow_DualTVL1()
+        flow = dtvl1.calc(prev_frame, next_frame, None)
 
         horz = cv2.normalize(flow[..., 0], None, 0, 255, cv2.NORM_MINMAX)
         vert = cv2.normalize(flow[..., 1], None, 0, 255, cv2.NORM_MINMAX)

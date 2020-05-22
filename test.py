@@ -52,15 +52,7 @@ def main(cfg):
     start_time = datetime.datetime.now()
 
     # Initialise spatial/temporal CNNs
-    cnn = network.CNN(
-        model_name=cfg.model,
-        loss=cfg.loss,
-        lr=cfg.hyperparameters.learning_rate,
-        regularisation=cfg.hyperparameters.regularisation,
-        num_classes=len(classes),
-        temporal_stack=cfg.dataset.temporal_stack,
-        device=DEVICE,
-    )
+    cnn = network.CNN(cfg=cfg, num_classes=len(classes), device=DEVICE,)
 
     # Load checkpoints
     cnn.load_checkpoint(cfg.name, cfg.paths.checkpoints, cfg.best)
@@ -69,13 +61,13 @@ def main(cfg):
     test_dataset = GreatApeDataset(
         mode=cfg.mode,
         sample_interval=cfg.dataset.sample_interval,
-        temporal_stack=cfg.dataset.temporal_stack,
+        sequence_length=cfg.dataset.sequence_length,
         activity_duration_threshold=cfg.dataset.activity_duration_threshold,
-        video_names=f"{cfg.paths.splits}/validationdata.txt",
+        video_names=f"{cfg.paths.splits}/testdata.txt",
         classes=classes,
         frame_dir=cfg.paths.frames,
         annotations_dir=cfg.paths.annotations,
-        device=DEVICE
+        device=DEVICE,
     )
     test_loader = DataLoader(
         test_dataset,
@@ -86,10 +78,7 @@ def main(cfg):
 
     # Initialise evaluator
     network_evaluator = evaluator.Evaluator(
-        cnn=cnn,
-        data_loader=test_loader,
-        device=DEVICE,
-        name=cfg.name,
+        cnn=cnn, data_loader=test_loader, device=DEVICE, name=cfg.name,
     )
 
     print("==> Making predictions")
@@ -109,7 +98,7 @@ def main(cfg):
     draw_bounding_boxes(
         model_output_path,
         cfg.paths.annotations,
-        cfg.dataset.temporal_stack,
+        cfg.dataset.sequence_length,
         predictions_dict,
         classes,
     )

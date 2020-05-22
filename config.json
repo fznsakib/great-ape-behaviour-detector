@@ -1,17 +1,54 @@
 {
-    "name": "size_test",
+    "name": "twostream_LSTM",
     "mode": "train",
     "resume": false,
     "best" : false,
-    "model": "resnet18",
-    "loss": "focal",
     "log": false,
     "bucket": "faizaanbucket",
+    "cnn": "resnet18",
     "hyperparameters": {
-        "epochs": 200,
-        "learning_rate": 0.000095,
+        "epochs": 50,
+        "learning_rate": 0.0001,
         "sgd_momentum": 0.9,
-        "regularisation": 0
+        "regularisation": 0.01,
+        "dropout": 0
+    },
+    "loss": {
+        "function" : "focal",
+        "cross_entropy": {
+            "weighted" : true
+        },
+        "focal": {
+            "alpha": 1,
+            "gamma": 1
+        }
+    },
+    "lstm" : {
+        "layers": 1,
+        "hidden_units": 512,
+        "dropout": 0
+    },
+    "dataset": {
+        "sample_interval": 20,
+        "sequence_length": 20,
+        "activity_duration_threshold": 60
+    },
+    "dataloader": {
+        "batch_size": 9,
+        "shuffle": false,
+        "worker_count": 1,
+        "sampler": true
+    },
+    "augmentation": {
+        "probability": 0,
+        "spatial": {
+            "colour_jitter": false,
+            "horizontal_flip": false,
+            "rotation": false
+        },
+        "temporal": {
+            "horizontal_flip": false
+        }
     },
     "paths": {
         "annotations": "../scratch/data/annotations",
@@ -21,17 +58,6 @@
         "logs": "../scratch/logs",
         "output": "../scratch/output",
         "splits": "../scratch/data/splits"
-    },
-    "dataset": {
-        "sample_interval": 20,
-        "temporal_stack": 20,
-        "activity_duration_threshold": 60
-    },
-    "dataloader": {
-        "batch_size": 9,
-        "shuffle": false,
-        "worker_count": 1,
-        "sampler": true
     },
     "frequencies": {
         "log": 1,
