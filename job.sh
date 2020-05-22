@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --job-name dataaug_all
+#SBATCH --job-name lr0.000095
 #SBATCH --gres gpu:1
 #SBATCH --partition gpu
-#SBATCH --time 0-08:00
-#SBATCH --mem=64GB
-#SBATCH --output output_dataaug_all
+#SBATCH --time 3-00:00
+#SBATCH --mem=120GB
+#SBATCH --output output_lr0.000095
 
 # Print some information about the job
 echo "Running on host $(hostname)"

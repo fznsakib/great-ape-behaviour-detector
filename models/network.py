@@ -70,6 +70,64 @@ class FusionNet(nn.Module):
         cnn_out = cnn_out.view(cnn_out.size(0), -1)
         out = self.fc(cnn_out)
         return out
+
+class LSTMFusionNet(nn.Module):
+    def __init__(self, spatial, temporal, num_classes, lstm_layers, hidden_size, dropout, device):
+        super(LSTMFusionNet, self).__init__()
+        self.hidden_size = hidden_size
+        self.lstm_layers = lstm_layers
+        self.num_classes = num_classes
+        self.device = device
+
+        self.spatial = nn.Sequential(*list(spatial.children())[:-1])
+        self.temporal = nn.Sequential(*list(temporal.children())[:-1])
+        
+        self.lstm_spatial = nn.LSTM(input_size = 512,
+                    hidden_size = hidden_size,
+                    num_layers = lstm_layers,
+                    batch_first = True,
+                    dropout = dropout)
+        
+        self.lstm_temporal = nn.LSTM(input_size = 512,
+                    hidden_size = hidden_size,
+                    num_layers = lstm_layers,
+                    batch_first = True,
+                    dropout = dropout)
+        
+        self.fc1 = nn.Linear(1024, 512)
+        self.fc2 = nn.Linear(512, num_classes)
+
+    def forward(self, spatial_data, temporal_data):
+        # Spatial forward
+        h0_spatial = torch.zeros(self.lstm_layers, spatial_data.size(0), self.hidden_size).requires_grad_().to(self.device)
+        c0_spatial = torch.zeros(self.lstm_layers, spatial_data.size(0), self.hidden_size).requires_grad_().to(self.device)
+        
+        batch_size, seq_length, c, h, w = spatial_data.shape
+        spatial_data = spatial_data.view(batch_size * seq_length, c, h, w)
+        spatial_out = self.spatial(spatial_data)
+        spatial_out = spatial_out.view(batch_size, seq_length, -1)
+        
+        spatial_out, (hn_spatial, cn_spatial) = self.lstm_spatial(spatial_out, (h0_spatial.detach(), c0_spatial.detach()))
+        spatial_out = spatial_out[:, -1, :]
+        
+        # Temporal forward
+        h0_temporal = torch.zeros(self.lstm_layers, temporal_data.size(0), self.hidden_size).requires_grad_().to(self.device)
+        c0_temporal = torch.zeros(self.lstm_layers, temporal_data.size(0), self.hidden_size).requires_grad_().to(self.device)
+        
+        batch_size, seq_length, c, h, w = temporal_data.shape
+        temporal_data = temporal_data.view(batch_size * seq_length, c, h, w)
+        temporal_out = self.temporal(temporal_data)
+        temporal_out = temporal_out.view(batch_size, seq_length, -1)
+        
+        temporal_out, (hn_temporal, cn_temporal) = self.lstm_temporal(temporal_out, (h0_temporal.detach(), c0_temporal.detach()))
+        temporal_out = temporal_out[:, -1, :]
+        
+        # concatenate features
+        fused_out = torch.cat((spatial_out, temporal_out), dim=1)
+        
+        fused_out = F.relu(self.fc1(fused_out))
+                               
+        return self.fc2(fused_out)
     
 class CNN:
     def __init__(self, model_name, loss, lr, regularisation, num_classes, temporal_stack, device):
@@ -85,17 +143,18 @@ class CNN:
         )
         
         temporal_model = initialise_model(
-            model_name=model_name, pretrained=True, num_classes=num_classes, channels=temporal_stack*2
+            model_name=model_name, pretrained=True, num_classes=num_classes, channels=2
         )
         
-        self.model = FusionNet(spatial_model, temporal_model, num_classes)
+        self.model = LSTMFusionNet(spatial_model, temporal_model, num_classes, 1, 512, 0, device)
 
         # Send the model to GPU
         self.model = self.model.to(device)
 
         self.criterion = initialise_loss(loss)
         self.optimiser = optim.SGD(self.model.parameters(), lr=self.lr, momentum=0.9, weight_decay=regularisation)
-        self.scheduler = ReduceLROnPlateau(self.optimiser, "min", patience=5, verbose=True)
+        self.scheduler = ReduceLROnPlateau(self.optimiser, "min", patience=3, verbose=True)
+
 
     def load_checkpoint(self, name, checkpoint_path, best=False):
         checkpoint_file_path = f"{checkpoint_path}/{name}/model"

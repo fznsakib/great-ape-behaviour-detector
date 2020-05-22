@@ -95,7 +95,7 @@ def main(cfg):
 
     test_dataset = GreatApeDataset(
         mode="validation",
-        sample_interval=5,
+        sample_interval=20,
         temporal_stack=cfg.dataset.temporal_stack,
         activity_duration_threshold=cfg.dataset.activity_duration_threshold,
         video_names=f"{cfg.paths.splits}/validationdata.txt",

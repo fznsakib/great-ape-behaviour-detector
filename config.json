@@ -1,15 +1,15 @@
 {
-    "name": "dataaug_all",
+    "name": "size_test",
     "mode": "train",
     "resume": false,
     "best" : false,
     "model": "resnet18",
     "loss": "focal",
-    "log": true,
+    "log": false,
     "bucket": "faizaanbucket",
     "hyperparameters": {
-        "epochs": 50,
-        "learning_rate": 0.001,
+        "epochs": 200,
+        "learning_rate": 0.000095,
         "sgd_momentum": 0.9,
         "regularisation": 0
     },
@@ -23,12 +23,12 @@
         "splits": "../scratch/data/splits"
     },
     "dataset": {
-        "sample_interval": 10,
-        "temporal_stack": 5,
-        "activity_duration_threshold": 72
+        "sample_interval": 20,
+        "temporal_stack": 20,
+        "activity_duration_threshold": 60
     },
     "dataloader": {
-        "batch_size": 35,
+        "batch_size": 9,
         "shuffle": false,
         "worker_count": 1,
         "sampler": true
