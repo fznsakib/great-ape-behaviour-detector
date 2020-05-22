@@ -16,7 +16,6 @@ for video in tqdm(videos):
         in_file_path = f"../dataset/behaviour_annotations/{video}/{video}_frame_{frame_no}.xml"
 
         if not os.path.exists(in_file_path):
-            # print(f'Frame {frame_no} does not exist for video {video}')
             continue
 
         in_file = open(in_file_path)
@@ -28,14 +27,14 @@ for video in tqdm(videos):
             if obj.find("id") == None:
                 if video not in id_dict.keys():
                     id_dict[video] = []
-                # print(f'No ID found for ape no {i} in frame {frame_no} in video {video}')
+
                 id_dict[video].append(frame_no)
                 continue
             if obj.find("activity") == None:
                 if video not in behaviour_dict.keys():
                     behaviour_dict[video] = []
+
                 behaviour_dict[video].append(frame_no)
-                # print(f'No activity found for ape no {i} in frame {frame_no} in video {video}')
                 continue
 
 id_json = json.dumps(id_dict)

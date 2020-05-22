@@ -47,15 +47,14 @@ class Trainer:
     ):
         print("==> Training Stage")
 
-        # Activate training mode
-        self.cnn.model.train()
-
         # Train for requested number of epochs
         for epoch in range(start_epoch, start_epoch + epochs):
-            self.cnn.model.train()
 
+            # Activate training mode
+            self.cnn.model.train()
             data_load_start_time = time.time()
 
+            # Train on batch
             for i, (spatial_data, temporal_data, labels, metadata) in enumerate(self.train_loader):
 
                 # Set gradients to zero
@@ -170,7 +169,7 @@ class Trainer:
         # during validation and a different form of batch normalisation is used.
         self.cnn.model.eval()
 
-        # No need to track gradients for validation, we're not optimizing.
+        # No need to track gradients for validation as network is not being optimised
         with torch.no_grad():
             for i, (spatial_data, temporal_data, labels, metadata) in enumerate(
                 tqdm(self.test_loader, desc="Validation", leave=False, unit="batch")
@@ -203,7 +202,7 @@ class Trainer:
         class_accuracy = metrics.compute_class_accuracy(results["labels"], results["predictions"])
         class_accuracy_average = mean(class_accuracy.values())
 
-        # Get average loss for each stream
+        # Get average loss over validation set
         average_loss = total_loss / len(self.test_loader)
 
         # Log metrics
@@ -276,13 +275,11 @@ class Trainer:
         print("==> Overall Results")
         validation_results = [
             ["Average Loss:", f"{average_loss:.5f}"],
-            ["Average Class Accuracy:", f"{class_accuracy_average:2f}"],
+            ["Average Class Accuracy:", f"{class_accuracy_average:.2f}"],
             ["Top1 Accuracy:", f"{top1.item():.2f}"],
             ["Top3 Accuracy:", f"{top3.item():.2f}"],
         ]
 
         print(tabulate(validation_results, tablefmt="fancy_grid"))
-
-        # TODO: print per class accuracy in separate table
 
         return top1, average_loss

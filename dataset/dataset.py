@@ -17,33 +17,36 @@ from statistics import mode
 from utils.data import *
 
 
+"""
+Great Ape dataset consisting of frames extracted from jungle trap footage.
+Extracts all samples found in raw dataset using provided annotations.
+Pre-processes and returns sequences of RGB frames and optical flow images for
+the spatial and temporal streams respectively.
+"""
 class GreatApeDataset(torch.utils.data.Dataset):
-    """
-    Great Ape dataset consisting of frames extracted from jungle trap footage.
-    Includes RGB frames for spatiality and optical flow for temporality.
-    """
-
     def __init__(
         self, cfg, mode, video_names, classes, device,
     ):
-        """
-        Args:
-            mode (string): Specifies what split of data this will hold (e.g. train, validation, test)
-            video_names (string): Path to txt file with the names of videos to sample from.
-            classes (string): Path to txt file containing the classes.
-            frame_dir (string): Directory with all the images.
-            annotations_dir (string): Directory with all the xml annotations.
-        """
         super(GreatApeDataset, self).__init__()
 
+        # Specifies what split of data this will hold (e.g. train, validation, test)
         self.mode = mode
+
+        # Data sampling parameters
         self.sample_interval = cfg.dataset.sample_interval
-        self.temporal_stack = cfg.dataset.sequence_length
+        self.sequence_length = cfg.dataset.sequence_length
         self.activity_duration_threshold = cfg.dataset.activity_duration_threshold
+
+        # Obtain from txt file with the names of videos to sample from.
         self.video_names = open(video_names).read().strip().split()
-        self.classes = classes
+
+        # Path initialisation
         self.frame_dir = cfg.paths.frames
         self.annotations_dir = cfg.paths.annotations
+
+        self.classes = classes
+
+        # Normalisation and data augmentation transforms
         self.spatial_transform = transforms.Compose(
             [
                 transforms.Resize((224, 224)),
@@ -81,6 +84,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
         self.labels = torch.from_numpy(self.labels)
         self.labels = self.labels.to(self.device)
 
+    # Return length of dataset (number of samples)
     def __len__(self):
         # If the length of the dataset has not yet been calculated, then do so and store it
         if not hasattr(self, "size"):
@@ -90,21 +94,24 @@ class GreatApeDataset(torch.utils.data.Dataset):
 
         return self.size
 
+    # Get the ith (index) sample from the dataset
     def __getitem__(self, index):
 
-        # Get required sample
+        # Get details of required sample
         video, ape_id, start_frame, activity = find_sample(self.samples, index)
 
         """
         Spatial Data
         """
         spatial_sample = []
-        transform_probabilities = []
 
+        # Assign probabilities to activated augmentations
+        transform_probabilities = []
         for i in range(0, len(self.spatial_augmentation_transform)):
             transform_probabilities.append(random.random())
 
-        for i in range(0, self.temporal_stack):
+        # Build sequence of RGB still frames of size sequence_length
+        for i in range(0, self.sequence_length):
             path = f"{self.frame_dir}/rgb/{video}/{video}_frame_{start_frame + i}.jpg"
             spatial_image = Image.open(path)
 
@@ -117,7 +124,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                 (coordinates[0], coordinates[1], coordinates[2], coordinates[3])
             )
 
-            # Apply augmentation and pre-processing transforms
+            # Apply augmentation and pre-processing transforms if training
             if self.mode == "train":
                 spatial_data = self.apply_augmentation_transforms(
                     spatial_image, self.spatial_augmentation_transform, transform_probabilities
@@ -126,6 +133,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
             else:
                 spatial_data = self.spatial_transform(spatial_image)
 
+            # Add image to sequence
             spatial_sample.append(spatial_data.squeeze_(0))
             spatial_image.close()
 
@@ -134,17 +142,19 @@ class GreatApeDataset(torch.utils.data.Dataset):
         """
         Temporal Data
         """
-        # temporal_data = torch.FloatTensor(2 * self.temporal_stack, 224, 224)
 
         temporal_sample = []
-        transform_probabilities = []
 
+        # Assign probabilities to activated augmentations
+        transform_probabilities = []
         for i in range(0, len(self.temporal_augmentation_transform)):
             transform_probabilities.append(random.random())
 
-        for i in range(0, self.temporal_stack):
+        # Build sequence of temporal images of size sequence_length
+        for i in range(0, self.sequence_length):
             this_data = []
 
+            # Get optical flow images for both directions
             x_path = f"{self.frame_dir}/horizontal_flow/{video}/{video}_frame_{start_frame + i}.jpg"
             y_path = f"{self.frame_dir}/vertical_flow/{video}/{video}_frame_{start_frame + i}.jpg"
 
@@ -159,7 +169,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
             image_x = image_x.crop((coordinates[0], coordinates[1], coordinates[2], coordinates[3]))
             image_y = image_y.crop((coordinates[0], coordinates[1], coordinates[2], coordinates[3]))
 
-            # Apply augmentation and pre-processing transforms for entire stack
+            # Apply augmentation and pre-processing transforms if training
             if self.mode == "train":
                 final_image_x = self.apply_augmentation_transforms(
                     image_x, self.temporal_augmentation_transform, transform_probabilities
@@ -173,11 +183,12 @@ class GreatApeDataset(torch.utils.data.Dataset):
                 final_image_x = self.temporal_transform(image_x)
                 final_image_y = self.temporal_transform(image_y)
 
-           
+            # Stack both optical flow images in third dimension
             this_data.append(final_image_x.squeeze_(0))
             this_data.append(final_image_y.squeeze_(0))
             stacked_data = torch.stack(this_data, dim=0)
 
+            # Add stacked optical flow image to sequence
             temporal_sample.append(stacked_data.squeeze(0))
 
             image_x.close()
@@ -186,22 +197,22 @@ class GreatApeDataset(torch.utils.data.Dataset):
         temporal_sample = torch.stack(temporal_sample, dim=0)
 
         """
-        Label
+        Target Label
         """
         label = self.classes.index(activity)
 
         """
-        Other data
+        Metadata relating to sample
         """
         metadata = {"ape_id": ape_id, "start_frame": start_frame, "video": video}
 
         return spatial_sample, temporal_sample, label, metadata
 
+    """
+    Creates a dictionary which includes all valid spatial + temporal samples from the dataset,
+    constrained by parameters provided in config.
+    """
     def initialise_dataset(self):
-        """
-        Creates a dictionary which includes all valid spatial + temporal samples from the dataset.
-        The dictionary is exported as a json for later use.
-        """
 
         # Go through every video in dataset
         for video in tqdm(self.video_names, desc=f"Initialising {self.mode} dataset", leave=False):
@@ -240,7 +251,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                             else:
                                 break
 
-                        # If less frames than activity duration threshold, carry on with search
+                        # If activity spanned over less frames than activity duration threshold, carry on with search
                         if valid_frames < self.activity_duration_threshold:
                             frame_no += valid_frames
                             continue
@@ -254,7 +265,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                             # For the last valid sample, ensure that there are enough temporal frames with the ape following it
                             if (valid_frame_no + self.sample_interval) >= last_valid_frame:
                                 correct_activity = False
-                                for temporal_frame in range(valid_frame_no, self.temporal_stack):
+                                for temporal_frame in range(valid_frame_no, self.sequence_length):
                                     ape = get_ape_by_id(
                                         self.annotations_dir, video, temporal_frame, current_ape_id
                                     )
@@ -270,7 +281,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                                     break
 
                             # Check if there are enough frames left
-                            if (no_of_frames - valid_frame_no) >= self.temporal_stack:
+                            if (no_of_frames - valid_frame_no) >= self.sequence_length:
 
                                 # Insert sample
                                 if video not in self.samples.keys():
@@ -289,19 +300,18 @@ class GreatApeDataset(torch.utils.data.Dataset):
 
                         frame_no = last_valid_frame
 
+    
+    """
+    Creates a dictionary which includes all spatial + temporal samples from the dataset.
+    These samples are used for evaluation of data, where no samples are omitted from search.
+    """
     def initialise_test_dataset(self):
-        """
-        Creates a dictionary which includes all spatial + temporal samples from the dataset.
-        These samples would then be used for a network to classify behaviour of.
-        The dictionary is exported as a json for later use.
-        """
 
         # Go through every video in dataset
         for video in tqdm(self.video_names, desc=f"Initialising {self.mode} dataset", leave=False):
-            # for video in tqdm(video_names, desc=f'Initialising {self.mode} dataset'):
+
             # Count how many apes are present in the video
             no_of_apes = get_no_of_apes(self.annotations_dir, video)
-            # print(f'video: {video}, no_of_apes: {no_of_apes}')
 
             # Go through each ape by id for possible samples
             for current_ape_id in range(0, no_of_apes + 1):
@@ -310,7 +320,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
 
                 # Traverse through every frame to get samples
                 while frame_no <= no_of_frames:
-                    if (no_of_frames - frame_no) < (self.temporal_stack - 1):
+                    if (no_of_frames - frame_no) < (self.sequence_length - 1):
                         break
 
                     # Find first instance of ape by id
@@ -324,7 +334,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                         insufficient_apes = False
 
                         # Check that this ape exists for the next n frames
-                        for look_ahead_frame_no in range(frame_no, frame_no + self.temporal_stack):
+                        for look_ahead_frame_no in range(frame_no, frame_no + self.sequence_length):
                             ape = get_ape_by_id(
                                 self.annotations_dir, video, look_ahead_frame_no, current_ape_id
                             )
@@ -338,17 +348,17 @@ class GreatApeDataset(torch.utils.data.Dataset):
                         # If the ape is not present for enough consecutive frames, then move on
                         if insufficient_apes:
                             # frame_no = look_ahead_frame_no
-                            frame_no += self.temporal_stack
+                            frame_no += self.sequence_length
                             continue
 
-                        # Get majority activity
+                        # Get majority activity across frames
                         try:
                             activity = mode(activities)
                         except:
                             activity = activities[0]
 
                         # Check if there are enough frames left
-                        if (no_of_frames - frame_no) >= self.temporal_stack:
+                        if (no_of_frames - frame_no) >= self.sequence_length:
 
                             # Insert sample
                             if video not in self.samples.keys():
@@ -365,15 +375,13 @@ class GreatApeDataset(torch.utils.data.Dataset):
                                 }
                             )
 
-                        frame_no += self.temporal_stack
+                        frame_no += self.sequence_length
 
         return
 
+    # Creates a dictionary which includes all spatial + temporal samples from the dataset
+    # with the classes as keys.
     def initialise_samples_by_class(self):
-        """
-        Creates a dictionary which includes all spatial + temporal samples from the dataset
-        with the classes as keys.
-        """
         for class_name in self.classes:
             self.samples_by_class[class_name] = []
 
@@ -383,14 +391,12 @@ class GreatApeDataset(torch.utils.data.Dataset):
                 new_annotation["video"] = video
                 self.samples_by_class[annotation["activity"]].append(new_annotation)
 
+    # Returns a list of number of samples for each class
     def get_no_of_samples_by_class(self):
-        """
-        Returns a list of number of samples for each class
-        """
         samples_by_class = np.unique(self.labels.cpu().numpy(), return_counts=True)[1]
-
         return samples_by_class
 
+    # Initialise class label for each sample
     def initialise_labels(self):
         labels = np.zeros(self.labels, dtype=int)
         i = 0
@@ -403,26 +409,31 @@ class GreatApeDataset(torch.utils.data.Dataset):
 
         self.labels = labels
 
+    # Return label by index
     def _get_label(self, index):
         return self.labels[index]
 
+    # Add augmentations to be considered for training according to config
     def initialise_augmentations(self, augmentation_cfg):
 
         spatial_aug = []
         temporal_aug = []
-        
+
         if augmentation_cfg.spatial.colour_jitter:
-            spatial_aug.append(transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5))
+            spatial_aug.append(
+                transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
+            )
         if augmentation_cfg.spatial.horizontal_flip:
             spatial_aug.append(transforms.RandomHorizontalFlip(p=1))
         if augmentation_cfg.spatial.rotation:
             spatial_aug.append(transforms.RandomRotation(p=1, degrees=10))
-        
+
         if augmentation_cfg.temporal.horizontal_flip:
             temporal_aug.append(transforms.RandomHorizontalFlip(p=1))
-        
+
         return spatial_aug, temporal_aug
 
+    # Apply augmentations to image depending on probability
     def apply_augmentation_transforms(self, image, augmentations, probabilities):
         for i, aug in enumerate(augmentations):
             if probabilities[i] < self.augmentation_probability:

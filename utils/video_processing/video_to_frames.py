@@ -4,26 +4,25 @@ import os
 import sys
 from tqdm import tqdm
 
-if len(sys.argv) != 2:
-    print("error: Arguments should be in the form:\n")
-    print("python splitter.py [path to data list]")
+print("Video to frame converter")
+print("Data directory provided should contain a 'videos' directory containing the videos.")
 
-data_list_path = sys.argv[1]
+dataset_path = input("Provide path to data directory: ")
+data_list_path = input("Provide path to txt file with names of videos to convert to optical flow: ")
 
 # Get list of video names which need to be split
-# filenames = open(sys.argv[1]).read().strip().split()
-filenames = [sys.argv[1]]
+filenames = open(data_list_path).read().strip().split()
 
 try:
-    if not os.path.exists("../dataset/frames"):
-        os.makedirs("../dataset/frames")
+    if not os.path.exists(f"{dataset_path}/rgb"):
+        os.makedirs(f"{dataset_path}/rgb")
 except OSError:
-    print("Error: Creating directory of dataset/frames")
+    print("Error: Creating directory of dataset/rgb")
 
 for filename in tqdm(filenames):
 
     # Playing video from file:
-    cap = cv2.VideoCapture(f"../dataset/videos/{filename}.mp4")
+    cap = cv2.VideoCapture(f"{dataset_path}/videos/{filename}.mp4")
     no_of_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
     currentFrame = 1
@@ -34,13 +33,13 @@ for filename in tqdm(filenames):
         ret, frame = cap.read()
 
         try:
-            if not os.path.exists(f"../dataset/frames/{filename}"):
-                os.makedirs(f"../dataset/frames/{filename}")
+            if not os.path.exists(f"{dataset_path}/rgb/{filename}"):
+                os.makedirs(f"{dataset_path}/rgb/{filename}")
         except OSError:
-            print("Error: Creating directory of dataset/frames")
+            print(f"Error: Creating directory of dataset/rgb/{filename}")
 
         # Saves image of the current frame in jpg file
-        name = f"../dataset/frames/{filename}/{filename}_frame_{currentFrame}.jpg"
+        name = f"{dataset_path}/rgb/{filename}/{filename}_frame_{currentFrame}.jpg"
 
         cv2.imwrite(name, frame)
 

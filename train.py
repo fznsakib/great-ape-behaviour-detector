@@ -1,6 +1,6 @@
-"""""" """""" """""" """""" """""" """""" """""" """
+"""
 Imports
-""" """""" """""" """""" """""" """""" """""" """"""
+"""
 import os
 import torch
 import torchvision
@@ -17,9 +17,9 @@ from torch.utils.tensorboard import SummaryWriter
 from tabulate import tabulate
 from pathlib import Path
 
-"""""" """""" """""" """""" """""" """""" """""" """
+"""
 Custom Library Imports
-""" """""" """""" """""" """""" """""" """""" """"""
+"""
 import models.network as network
 import models.loss as loss
 import controllers.trainer as trainer
@@ -28,9 +28,9 @@ from dataset.sampler import BalancedBatchSampler
 from utils.utils import *
 from utils.config_parser import ConfigParser
 
-"""""" """""" """""" """""" """""" """""" """""" """
+"""
 GPU Initialisation
-""" """""" """""" """""" """""" """""" """""" """"""
+"""
 torch.backends.cudnn.benchmark = True
 
 # Check if GPU available, and use if so. Otherwise, use CPU
@@ -39,9 +39,9 @@ if torch.cuda.is_available():
 else:
     DEVICE = torch.device("cpu")
 
-"""""" """""" """""" """""" """""" """""" """""" """
+"""
 Argument Parser
-""" """""" """""" """""" """""" """""" """""" """"""
+"""
 
 parser = argparse.ArgumentParser(
     description="A spatial & temporal-based two-stream convolutional neural network for recognising great ape behaviour.",
@@ -49,11 +49,9 @@ parser = argparse.ArgumentParser(
 )
 
 
-"""""" """""" """""" """""" """""" """""" """""" """
+"""
 Main
-""" """""" """""" """""" """""" """""" """""" """"""
-
-
+"""
 def main(cfg):
 
     classes = open(cfg.paths.classes).read().strip().split()
@@ -68,7 +66,7 @@ def main(cfg):
         device=DEVICE,
     )
 
-    if cfg.dataloader.sampler:
+    if cfg.dataloader.balanced_sampler:
         sampler = BalancedBatchSampler(train_dataset, train_dataset.labels)
     else:
         sampler = None
@@ -201,9 +199,9 @@ def main(cfg):
     )
 
 
-"""""" """""" """""" """""" """""" """""" """""" """
+"""
 Call main()
-""" """""" """""" """""" """""" """""" """""" """"""
+"""
 if __name__ == "__main__":
     cfg = ConfigParser().config
     main(cfg)

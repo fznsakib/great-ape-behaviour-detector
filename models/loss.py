@@ -7,9 +7,8 @@ from kornia.losses import FocalLoss
 
 weights = None
 
-
+# Return loss function as required by config
 def initialise_loss(loss):
-
     if loss.function == "focal":
         return FocalLoss(alpha=loss.focal.alpha, gamma=loss.focal.gamma, reduction="mean")
 
@@ -20,6 +19,7 @@ def initialise_loss(loss):
             return nn.CrossEntropyLoss()
 
 
+# Compute weights for weighted cross entropy if required
 def initialise_ce_weights(class_sample_count):
     largest_class_size = max(class_sample_count)
     weights = torch.empty(len(class_sample_count), dtype=torch.float)

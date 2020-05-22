@@ -29,7 +29,7 @@ class ConfigParser:
         self.add_path_arguments()
         self.add_frequency_arguments()
 
-        # Create name
+        # Create config
         self.config = self.parser.parse_args()
 
         if not self.config.name:
@@ -43,6 +43,9 @@ class ConfigParser:
             self.config.dataloader.shuffle = False
             self.config.dataset.sequence_length = 20
 
+        if self.config.bucket == "":
+            self.config.bucket = None
+
         self.config.paths.annotations = str(self.config.paths.annotations)
         self.config.paths.checkpoints = str(self.config.paths.checkpoints)
         self.config.paths.classes = str(self.config.paths.classes)
@@ -50,6 +53,10 @@ class ConfigParser:
         self.config.paths.logs = str(self.config.paths.logs)
         self.config.paths.output = str(self.config.paths.output)
         self.config.paths.splits = str(self.config.paths.splits)
+
+    """
+    Define config arguments
+    """
 
     def add_general_arguments(self):
         self.parser.add_argument(
@@ -164,8 +171,8 @@ class ConfigParser:
             "--dataloader.worker_count", default=1, type=int, help="Number of workers to load data",
         )
         self.parser.add_argument(
-            "--dataloader.sampler",
-            default=False,
+            "--dataloader.balanced_sampler",
+            default=True,
             type=bool,
             help="Use balanced batch sampler for equal number of samples across classes",
         )

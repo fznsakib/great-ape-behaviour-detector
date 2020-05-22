@@ -1,5 +1,5 @@
 {
-    "name": "twostream_LSTM",
+    "name": "twostream",
     "mode": "train",
     "resume": false,
     "best" : false,
@@ -16,7 +16,7 @@
     "loss": {
         "function" : "focal",
         "cross_entropy": {
-            "weighted" : true
+            "weighted" : false
         },
         "focal": {
             "alpha": 1,
@@ -37,7 +37,7 @@
         "batch_size": 9,
         "shuffle": false,
         "worker_count": 1,
-        "sampler": true
+        "balanced_sampler": true
     },
     "augmentation": {
         "probability": 0,

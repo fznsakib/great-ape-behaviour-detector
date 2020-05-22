@@ -5,7 +5,7 @@ import numpy as np
 import torch.utils.model_zoo as model_zoo
 from torchvision import models
 
-
+# Download links for pre-trained VGG weights
 model_urls = {
     "vgg16": "https://download.pytorch.org/models/vgg16-397923af.pth",
     "vgg16_bn": "https://download.pytorch.org/models/vgg16_bn-6c64b313.pth",
@@ -14,6 +14,9 @@ model_urls = {
 }
 
 
+"""
+Network Customisation
+"""
 # Transform the original 3 channel weight to the number channels requested
 def cross_modality_pretrain(conv1_weight, channels):
     # Accumulate conv1 weights across the 3 channels
@@ -72,6 +75,9 @@ def customise_initial_layer(model, model_name, channels):
     return model
 
 
+"""
+VGG Definitions
+"""
 def vgg16(pretrained, num_classes, channels):
     model = models.vgg16(pretrained=pretrained)
 

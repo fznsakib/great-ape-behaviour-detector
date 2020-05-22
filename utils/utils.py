@@ -79,6 +79,7 @@ def draw_bounding_boxes(model_output_path, annotations_path, temporal_stack, pre
                 image_file_path = f"{model_output_path}/{video}/{video}_frame_{frame_no}.jpg"
                 image = cv2.imread(image_file_path)
 
+                # Get coordinates for bounding box
                 top_left = (int(ape_coords[0]), int(ape_coords[1]))
                 bottom_right = (int(ape_coords[2]), int(ape_coords[3]))
 
@@ -138,6 +139,7 @@ def stitch_videos(model_output_path, frames_path, predictions):
         out.release()
 
 
+# Compress files for disk space
 def zip_videos(model_output_path, name):
     file_paths = []
     file_names = []
@@ -155,6 +157,8 @@ def zip_videos(model_output_path, name):
             zip.write(file, arcname=file_names[i])
 
 
+# Upload zip file to AWS S3 bucket specified in config
+# Returns a download link in the command line
 def upload_videos(model_output_path, name, bucket):
 
     s3 = boto3.client("s3")
@@ -165,12 +169,17 @@ def upload_videos(model_output_path, name, bucket):
         print(f"AWS account credentials found. Uploading output to S3 bucket {bucket}")
     except ClientError as e:
         print("AWS account credentials not found. Skipping upload.")
+        return
 
+    # Upload zip file to S3 bucket
     s3.upload_file(f"{model_output_path}/{name}.zip", bucket, f"{name}.zip")
+
+    # Set access settings for obtaining download URL
     object_acl = s3.put_object_acl(ACL="public-read", Bucket=bucket, Key=f"{name}.zip")
     response = s3.generate_presigned_url(
         "get_object", Params={"Bucket": bucket, "Key": f"{name}.zip", "ResponseExpires": 3600}
     )
+
     return response
 
 

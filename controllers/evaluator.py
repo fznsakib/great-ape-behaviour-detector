@@ -30,7 +30,6 @@ class Evaluator:
         self.cnn.model.eval()
         results = {"labels": [], "logits": [], "predictions": []}
 
-        #  No need to track gradients for validation, we're not optimizing.
         with torch.no_grad():
             for i, (spatial_data, temporal_data, label, metadata) in enumerate(
                 tqdm(self.data_loader, desc="Prediction", leave=False, unit="sample")
@@ -49,6 +48,7 @@ class Evaluator:
                 # Accumulate predictions against ground truth labels
                 prediction = logits.argmax().item()
 
+                # Logits are required for Top-k accuracy
                 logits = (logits.detach().cpu()).numpy()
 
                 # Collect reulsts for metrics

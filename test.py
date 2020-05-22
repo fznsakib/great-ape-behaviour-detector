@@ -1,6 +1,6 @@
-"""""" """""" """""" """""" """""" """""" """""" """
+"""
 Imports
-""" """""" """""" """""" """""" """""" """""" """"""
+"""
 import os
 import torch
 import torchvision
@@ -21,9 +21,9 @@ from tabulate import tabulate
 from pathlib import Path
 from tqdm import tqdm
 
-"""""" """""" """""" """""" """""" """""" """""" """
+"""
 Custom Library Imports
-""" """""" """""" """""" """""" """""" """""" """"""
+"""
 import models.network as network
 import controllers.evaluator as evaluator
 import utils.metrics as metrics
@@ -31,9 +31,9 @@ from dataset.dataset import GreatApeDataset
 from utils.utils import *
 from utils.config_parser import ConfigParser
 
-"""""" """""" """""" """""" """""" """""" """""" """
+"""
 GPU Initialisation
-""" """""" """""" """""" """""" """""" """""" """"""
+"""
 torch.backends.cudnn.benchmark = True
 
 # Check if GPU available, and use if so. Otherwise, use CPU
@@ -43,6 +43,9 @@ else:
     DEVICE = torch.device("cpu")
 
 
+"""
+Main
+"""
 def main(cfg):
 
     classes = open(cfg.paths.classes).read().strip().split()
@@ -59,7 +62,7 @@ def main(cfg):
     test_dataset = GreatApeDataset(
         cfg=cfg,
         mode="test",
-        video_names=f"{cfg.paths.splits}/testdata.txt",
+        video_names=f"{cfg.paths.splits}/crossval_test4.txt",
         classes=classes,
         device=DEVICE,
     )
@@ -108,14 +111,16 @@ def main(cfg):
     print("==> Generating confusion matrix")
     metrics.compute_confusion_matrix(predictions_dict, classes, model_output_path)
 
-    print("==> Creating zip file")
-    zip_videos(model_output_path, cfg.name)
+    # Upload to AWS S3 only if bucket name is given in config
+    if cfg.bucket:
+        print("==> Creating zip file")
+        zip_videos(model_output_path, cfg.name)
 
-    print("==> Uploading to AWS S3")
-    response = upload_videos(model_output_path, cfg.name, cfg.bucket)
+        print("==> Uploading to AWS S3")
+        response = upload_videos(model_output_path, cfg.name, cfg.bucket)
 
-    if response:
-        print(f"Output download link: {response}")
+        if response:
+            print(f"Output download link: {response}")
 
     total_time = datetime.datetime.now() - start_time
     print(f"Total time: {total_time.total_seconds()}")

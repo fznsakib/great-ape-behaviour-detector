@@ -27,7 +27,6 @@ def compute_accuracy(labels, predictions):
 
 # Compute the given top k accuracy of predictions made by the network
 def compute_topk_accuracy(output, labels, topk=(1,)):
-    """Computes the precision@k for the specified values of k"""
     maxk = max(topk)
     batch_size = labels.size(0)
 
@@ -86,14 +85,13 @@ def compute_confusion_matrix(predictions_dict, classes, output_path):
     cnf_matrix = confusion_matrix(labels, predictions)
     np.set_printoptions(precision=2)
 
-    # Plot normalized confusion matrix
+    # Plot normalised confusion matrix
     plt.figure(figsize=(20, 20))
     plot_confusion_matrix(
         cnf_matrix, classes=existing_classes, normalise=True, title="Normalised confusion matrix"
     )
 
     plt.savefig(f"{output_path}/confusion_matrix.png", bbox_inches="tight")
-    # plt.show()
 
 
 # Plots the confusion matrix
@@ -103,11 +101,6 @@ def plot_confusion_matrix(
 
     if normalise:
         cm = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
-    #     print("Normalised Confusion Matrix")
-    # else:
-    #     print('Unnormalised Confusion Matrix')
-
-    # print(cm)
 
     plt.imshow(cm, interpolation="nearest", cmap=cmap)
     plt.title(title, fontsize=30, pad=30)
