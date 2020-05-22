@@ -18,7 +18,7 @@ ape_activity = sys.argv[5]
 
 # Go through xml files for every frame in range
 for i in range(start_frame, end_frame + 1):
-    frame_file_path = f"../dataset/behaviour_annotations/{filename}/{filename}_frame_{i}.xml"
+    frame_file_path = f"../../../scratch/data/annotations/{filename}/{filename}_frame_{i}.xml"
     in_file = open(frame_file_path)
     tree = ET.parse(in_file)
     root = tree.getroot()

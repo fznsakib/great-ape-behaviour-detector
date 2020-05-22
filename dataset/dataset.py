@@ -60,7 +60,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],),
             ]
         )
-        self.temporal_transform = temporal_transform=transforms.Compose(
+        self.temporal_transform = transforms.Compose(
             [
                 transforms.Resize((224, 224)),
                 transforms.ToTensor(),
@@ -70,7 +70,6 @@ class GreatApeDataset(torch.utils.data.Dataset):
         self.spatial_augmentation_transform = [
             # transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
             # transforms.RandomHorizontalFlip(p=1),
-            # transforms.RandomPerspective(p=1),
             # transforms.RandomRotation(degrees=10),
         ]
             
@@ -115,6 +114,11 @@ class GreatApeDataset(torch.utils.data.Dataset):
         Spatial Data
         """
         spatial_sample = []
+        transform_probabilities = []
+        
+        for i in range(0, len(self.spatial_augmentation_transform)):
+            transform_probabilities.append(random.random())
+        
         
         for i in range(0, self.temporal_stack):
             path = f"{self.frame_dir}/rgb/{video}/{video}_frame_{start_frame + i}.jpg"
@@ -130,7 +134,7 @@ class GreatApeDataset(torch.utils.data.Dataset):
             )
             
             # Apply augmentation and pre-processing transforms
-            spatial_data = self.apply_augmentation_transforms(spatial_image, self.spatial_augmentation_transform)
+            spatial_data = self.apply_augmentation_transforms(spatial_image, self.spatial_augmentation_transform, transform_probabilities)
             spatial_data = self.spatial_transform(spatial_data)
             
             spatial_sample.append(spatial_data.squeeze_(0))
@@ -142,9 +146,12 @@ class GreatApeDataset(torch.utils.data.Dataset):
         Temporal Data
         """
         # temporal_data = torch.FloatTensor(2 * self.temporal_stack, 224, 224)
-        apply_transform = random.random() > 0.5
         
         temporal_sample = []
+        transform_probabilities = []
+        
+        for i in range(0, len(self.temporal_augmentation_transform)):
+            transform_probabilities.append(random.random())
 
         for i in range(0, self.temporal_stack):
             this_data = []
@@ -164,17 +171,10 @@ class GreatApeDataset(torch.utils.data.Dataset):
             image_y = image_y.crop((coordinates[0], coordinates[1], coordinates[2], coordinates[3]))
 
             # Apply augmentation and pre-processing transforms for entire stack
-            if apply_transform:
-                final_image_x = self.apply_augmentation_transforms(image_x, self.temporal_augmentation_transform, temporal=True)
-                final_image_y = self.apply_augmentation_transforms(image_y, self.temporal_augmentation_transform, temporal=True)
-                final_image_x = self.temporal_transform(final_image_x)
-                final_image_y = self.temporal_transform(final_image_y)
-            else:
-                final_image_x = self.temporal_transform(image_x)
-                final_image_y = self.temporal_transform(image_y)
-            
-            # temporal_data[2 * i, :, :] = final_image_x
-            # temporal_data[(2 * i) + 1, :, :] = final_image_y
+            final_image_x = self.apply_augmentation_transforms(image_x, self.temporal_augmentation_transform, transform_probabilities)
+            final_image_y = self.apply_augmentation_transforms(image_y, self.temporal_augmentation_transform, transform_probabilities)
+            final_image_x = self.temporal_transform(final_image_x)
+            final_image_y = self.temporal_transform(final_image_y)
             
             this_data.append(final_image_x.squeeze_(0))
             this_data.append(final_image_y.squeeze_(0))
@@ -408,35 +408,9 @@ class GreatApeDataset(torch.utils.data.Dataset):
     def _get_label(self, index):
         return self.labels[index]
     
-    def apply_augmentation_transforms(self, image, augmentations, temporal=False):
-        for aug in augmentations:
-            if temporal:
+    def apply_augmentation_transforms(self, image, augmentations, probabilities):
+        for i, aug in enumerate(augmentations):
+            if probabilities[i] > 0.5:
                 image = aug(image)
-            else:
-                if random.random() > 0.5:
-                    image = aug(image)
                 
         return image
-
-
-if __name__ == "__main__":
-
-    mode = "test"
-    sample_interval = 10
-    temporal_stack = 5
-    activity_duration_threshold = 72
-    video_names = "../scratch/data/splits/trainingdata.txt"
-    classes = "../scratch/data/classes.txt"
-    frame_dir = "../scratch/data/frames"
-    annotations_dir = "../scratch/data/annotations"
-
-    dataset = GreatApeDataset(
-        mode,
-        sample_interval,
-        temporal_stack,
-        activity_duration_threshold,
-        video_names,
-        classes,
-        frame_dir,
-        annotations_dir
-    )

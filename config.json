@@ -1,15 +1,15 @@
 {
-    "name": "twostream_LSTMRNN_interval_30",
+    "name": "size_test",
     "mode": "train",
     "resume": false,
     "best" : false,
     "model": "resnet18",
-    "loss": "cross_entropy",
-    "log": true,
+    "loss": "focal",
+    "log": false,
     "bucket": "faizaanbucket",
     "hyperparameters": {
-        "epochs": 50,
-        "learning_rate": 0.001,
+        "epochs": 200,
+        "learning_rate": 0.000095,
         "sgd_momentum": 0.9,
         "regularisation": 0
     },
@@ -23,8 +23,8 @@
         "splits": "../scratch/data/splits"
     },
     "dataset": {
-        "sample_interval": 30,
-        "temporal_stack": 30,
+        "sample_interval": 20,
+        "temporal_stack": 20,
         "activity_duration_threshold": 60
     },
     "dataloader": {
