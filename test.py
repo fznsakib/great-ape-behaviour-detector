@@ -24,8 +24,6 @@ from tqdm import tqdm
 """""" """""" """""" """""" """""" """""" """""" """
 Custom Library Imports
 """ """""" """""" """""" """""" """""" """""" """"""
-import models.spatial as spatial
-import models.temporal as temporal
 import models.network as network
 import controllers.evaluator as evaluator
 import utils.metrics as metrics
@@ -52,21 +50,17 @@ def main(cfg):
     start_time = datetime.datetime.now()
 
     # Initialise spatial/temporal CNNs
-    cnn = network.CNN(cfg=cfg, num_classes=len(classes), device=DEVICE,)
+    cnn = network.CNN(cfg=cfg, num_classes=len(classes), device=DEVICE)
 
     # Load checkpoints
     cnn.load_checkpoint(cfg.name, cfg.paths.checkpoints, cfg.best)
 
     # Initialise test dataloader
     test_dataset = GreatApeDataset(
-        mode=cfg.mode,
-        sample_interval=cfg.dataset.sample_interval,
-        sequence_length=cfg.dataset.sequence_length,
-        activity_duration_threshold=cfg.dataset.activity_duration_threshold,
+        cfg=cfg,
+        mode="test",
         video_names=f"{cfg.paths.splits}/testdata.txt",
         classes=classes,
-        frame_dir=cfg.paths.frames,
-        annotations_dir=cfg.paths.annotations,
         device=DEVICE,
     )
     test_loader = DataLoader(

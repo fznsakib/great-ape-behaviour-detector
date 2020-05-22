@@ -122,7 +122,9 @@ class GreatApeDataset(torch.utils.data.Dataset):
                 spatial_data = self.apply_augmentation_transforms(
                     spatial_image, self.spatial_augmentation_transform, transform_probabilities
                 )
-            spatial_data = self.spatial_transform(spatial_data)
+                spatial_data = self.spatial_transform(spatial_data)
+            else:
+                spatial_data = self.spatial_transform(spatial_image)
 
             spatial_sample.append(spatial_data.squeeze_(0))
             spatial_image.close()
@@ -165,10 +167,13 @@ class GreatApeDataset(torch.utils.data.Dataset):
                 final_image_y = self.apply_augmentation_transforms(
                     image_y, self.temporal_augmentation_transform, transform_probabilities
                 )
+                final_image_x = self.temporal_transform(final_image_x)
+                final_image_y = self.temporal_transform(final_image_y)
+            else:
+                final_image_x = self.temporal_transform(image_x)
+                final_image_y = self.temporal_transform(image_y)
 
-            final_image_x = self.temporal_transform(final_image_x)
-            final_image_y = self.temporal_transform(final_image_y)
-
+           
             this_data.append(final_image_x.squeeze_(0))
             this_data.append(final_image_y.squeeze_(0))
             stacked_data = torch.stack(this_data, dim=0)
@@ -405,19 +410,17 @@ class GreatApeDataset(torch.utils.data.Dataset):
 
         spatial_aug = []
         temporal_aug = []
-
+        
         if augmentation_cfg.spatial.colour_jitter:
-            spatial_aug.append(
-                transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5)
-            )
+            spatial_aug.append(transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5))
         if augmentation_cfg.spatial.horizontal_flip:
             spatial_aug.append(transforms.RandomHorizontalFlip(p=1))
         if augmentation_cfg.spatial.rotation:
             spatial_aug.append(transforms.RandomRotation(p=1, degrees=10))
-
+        
         if augmentation_cfg.temporal.horizontal_flip:
             temporal_aug.append(transforms.RandomHorizontalFlip(p=1))
-
+        
         return spatial_aug, temporal_aug
 
     def apply_augmentation_transforms(self, image, augmentations, probabilities):
