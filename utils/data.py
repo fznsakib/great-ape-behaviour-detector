@@ -1,11 +1,8 @@
 import glob
 import xml.etree.ElementTree as ET
 
-"""
-Get XML root of annotation
-"""
 
-
+# Get XML root of annotation
 def get_root(annotations_dir, video, frame_no):
     annotation_path = f"{annotations_dir}/{video}/{video}_frame_{frame_no}.xml"
     tree = ET.parse(annotation_path)
@@ -13,11 +10,7 @@ def get_root(annotations_dir, video, frame_no):
     return root
 
 
-"""
-Get ape XML element from a frame by its ape id
-"""
-
-
+# Get ape XML element from a frame by its ape id
 def get_ape_by_id(annotations_dir, video, frame_no, ape_id):
     root = get_root(annotations_dir, video, frame_no)
     ape = None
@@ -30,31 +23,19 @@ def get_ape_by_id(annotations_dir, video, frame_no, ape_id):
     return ape
 
 
-"""
-Get activity of ape from ape XML element
-"""
-
-
+# Get activity of ape from ape XML element
 def get_activity(ape):
     activity = ape.find("activity").text
     return activity
 
 
-"""
-Get species of ape from ape XML element
-"""
-
-
+# Get species of ape from ape XML element
 def get_species(ape):
     species = ape.find("name").text
     return species
 
 
-"""
-Get number of apes present across a given video.
-"""
-
-
+# Get number of apes present across a given video.
 def get_no_of_apes(annotations_dir, video):
     no_of_frames = len(glob.glob(f"{annotations_dir}/{video}/*.xml"))
     no_of_apes = 0
@@ -70,11 +51,7 @@ def get_no_of_apes(annotations_dir, video):
     return no_of_apes
 
 
-"""
-Get size (height, width) of a given video
-"""
-
-
+# Get size (height, width) of a given video
 def get_image_size(annotations_dir, video):
     root = get_root(annotations_dir, video, 1)
     size = root.find("size")
@@ -83,11 +60,7 @@ def get_image_size(annotations_dir, video):
     return height, width
 
 
-"""
-Get coordinates from ape XML element
-"""
-
-
+# Get coordinates from ape XML element
 def get_ape_coordinates(ape):
     coordinates = []
 
@@ -97,11 +70,7 @@ def get_ape_coordinates(ape):
     return coordinates
 
 
-"""
-Get the ith sample from the dataset
-"""
-
-
+# Get the ith sample from the dataset
 def find_sample(samples, index):
     current_index = 0
 

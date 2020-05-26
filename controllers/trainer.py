@@ -47,17 +47,16 @@ class Trainer:
     ):
         print("==> Training Stage")
 
-        # Activate training mode
-        self.cnn.model.train()
-
         # Train for requested number of epochs
         for epoch in range(start_epoch, start_epoch + epochs):
+
+            # Activate training mode
             self.cnn.model.train()
-            
             data_load_start_time = time.time()
 
+            # Train on batch
             for i, (spatial_data, temporal_data, labels, metadata) in enumerate(self.train_loader):
-                
+
                 # Set gradients to zero
                 self.cnn.optimiser.zero_grad()
 
@@ -81,9 +80,7 @@ class Trainer:
 
                 # Compute accuracy
                 with torch.no_grad():
-                    top1, top3 = metrics.compute_topk_accuracy(
-                        logits, labels, topk=(1, 3)
-                    )
+                    top1, top3 = metrics.compute_topk_accuracy(logits, labels, topk=(1, 3))
 
                 data_load_time = data_load_end_time - data_load_start_time
                 step_time = time.time() - data_load_end_time
@@ -105,10 +102,7 @@ class Trainer:
 
             # Go into validation mode if condition met
             if ((epoch + 1) % val_frequency) == 0:
-                (
-                    validation_accuracy,
-                    validation_loss,
-                ) = self.validate()
+                (validation_accuracy, validation_loss,) = self.validate()
 
                 # Adjust LR using scheduler
                 self.cnn.scheduler.step(validation_loss)
@@ -160,9 +154,7 @@ class Trainer:
         self.summary_writer.add_scalar("epoch", epoch, self.step)
         self.summary_writer.add_scalars("top1_accuracy", {"train": top1.item()}, self.step)
         self.summary_writer.add_scalars("top3_accuracy", {"train": top3.item()}, self.step)
-        self.summary_writer.add_scalars(
-            "loss", {"train": float(loss.item())}, self.step
-        )
+        self.summary_writer.add_scalars("loss", {"train": float(loss.item())}, self.step)
         self.summary_writer.add_scalar("time/data", data_load_time, self.step)
         self.summary_writer.add_scalar("time/data", step_time, self.step)
 
@@ -177,7 +169,7 @@ class Trainer:
         # during validation and a different form of batch normalisation is used.
         self.cnn.model.eval()
 
-        # No need to track gradients for validation, we're not optimizing.
+        # No need to track gradients for validation as network is not being optimised
         with torch.no_grad():
             for i, (spatial_data, temporal_data, labels, metadata) in enumerate(
                 tqdm(self.test_loader, desc="Validation", leave=False, unit="batch")
@@ -192,8 +184,8 @@ class Trainer:
                 loss = self.cnn.criterion(logits, labels)
 
                 total_loss += loss.item()
-                
-                logits =(logits.detach().cpu()).numpy()
+
+                logits = (logits.detach().cpu()).numpy()
 
                 # Populate dictionary with logits and labels of all samples in this batch
                 for j in range(len(labels)):
@@ -210,27 +202,43 @@ class Trainer:
         class_accuracy = metrics.compute_class_accuracy(results["labels"], results["predictions"])
         class_accuracy_average = mean(class_accuracy.values())
 
-        # Get average loss for each stream
+        # Get average loss over validation set
         average_loss = total_loss / len(self.test_loader)
 
         # Log metrics
         if self.log:
-            self.summary_writer.add_scalars(
-                "loss", {"validation": average_loss}, self.step
-            )
+            self.summary_writer.add_scalars("loss", {"validation": average_loss}, self.step)
             self.summary_writer.add_scalars(
                 "average_class_accuracy", {"validation": class_accuracy_average}, self.step
             )
-            self.summary_writer.add_scalars("class_accuracy", {"camera_interaction": class_accuracy[0]}, self.step)
-            self.summary_writer.add_scalars("class_accuracy", {"climbing_down": class_accuracy[1]}, self.step)
-            self.summary_writer.add_scalars("class_accuracy", {"climbing_up": class_accuracy[2]}, self.step)
-            self.summary_writer.add_scalars("class_accuracy", {"hanging": class_accuracy[3]}, self.step)
-            self.summary_writer.add_scalars("class_accuracy", {"running": class_accuracy[4]}, self.step)
-            self.summary_writer.add_scalars("class_accuracy", {"sitting": class_accuracy[5]}, self.step)
-            self.summary_writer.add_scalars("class_accuracy", {"sitting_on_back": class_accuracy[6]}, self.step)
-            self.summary_writer.add_scalars("class_accuracy", {"standing": class_accuracy[7]}, self.step)
-            self.summary_writer.add_scalars("class_accuracy", {"walking": class_accuracy[8]}, self.step)
-            
+            self.summary_writer.add_scalars(
+                "class_accuracy", {"camera_interaction": class_accuracy[0]}, self.step
+            )
+            self.summary_writer.add_scalars(
+                "class_accuracy", {"climbing_down": class_accuracy[1]}, self.step
+            )
+            self.summary_writer.add_scalars(
+                "class_accuracy", {"climbing_up": class_accuracy[2]}, self.step
+            )
+            self.summary_writer.add_scalars(
+                "class_accuracy", {"hanging": class_accuracy[3]}, self.step
+            )
+            self.summary_writer.add_scalars(
+                "class_accuracy", {"running": class_accuracy[4]}, self.step
+            )
+            self.summary_writer.add_scalars(
+                "class_accuracy", {"sitting": class_accuracy[5]}, self.step
+            )
+            self.summary_writer.add_scalars(
+                "class_accuracy", {"sitting_on_back": class_accuracy[6]}, self.step
+            )
+            self.summary_writer.add_scalars(
+                "class_accuracy", {"standing": class_accuracy[7]}, self.step
+            )
+            self.summary_writer.add_scalars(
+                "class_accuracy", {"walking": class_accuracy[8]}, self.step
+            )
+
             self.summary_writer.add_scalars("top1_accuracy", {"validation": top1.item()}, self.step)
             self.summary_writer.add_scalars("top3_accuracy", {"validation": top3.item()}, self.step)
 
@@ -246,34 +254,32 @@ class Trainer:
                 "sitting",
                 "sitting_on_back",
                 "standing",
-                "walking"
+                "walking",
             ],
             [
                 "Accuracy",
-                f'{class_accuracy[0]:2.2f}',
-                f'{class_accuracy[1]:2.2f}',
-                f'{class_accuracy[2]:2.2f}',
-                f'{class_accuracy[3]:2.2f}',
-                f'{class_accuracy[4]:2.2f}',
-                f'{class_accuracy[5]:2.2f}',
-                f'{class_accuracy[6]:2.2f}',
-                f'{class_accuracy[7]:2.2f}',
-                f'{class_accuracy[8]:2.2f}'
-            ]
+                f"{class_accuracy[0]:2.2f}",
+                f"{class_accuracy[1]:2.2f}",
+                f"{class_accuracy[2]:2.2f}",
+                f"{class_accuracy[3]:2.2f}",
+                f"{class_accuracy[4]:2.2f}",
+                f"{class_accuracy[5]:2.2f}",
+                f"{class_accuracy[6]:2.2f}",
+                f"{class_accuracy[7]:2.2f}",
+                f"{class_accuracy[8]:2.2f}",
+            ],
         ]
-        
+
         print(tabulate(per_class_results, tablefmt="fancy_grid"))
-        
+
         print("==> Overall Results")
         validation_results = [
             ["Average Loss:", f"{average_loss:.5f}"],
-            ["Average Class Accuracy:", f"{class_accuracy_average:2f}"],
+            ["Average Class Accuracy:", f"{class_accuracy_average:.2f}"],
             ["Top1 Accuracy:", f"{top1.item():.2f}"],
             ["Top3 Accuracy:", f"{top3.item():.2f}"],
         ]
 
         print(tabulate(validation_results, tablefmt="fancy_grid"))
-
-        # TODO: print per class accuracy in separate table
 
         return top1, average_loss

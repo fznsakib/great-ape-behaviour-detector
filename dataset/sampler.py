@@ -1,53 +1,55 @@
 import torch
-is_torchvision_installed = True
-try:
-    import torchvision
-except:
-    is_torchvision_installed = False
+import torchvision
 import torch.utils.data
 import random
 
+"""
+A PyTorch Dataloader compatible sampler which ensures that every batch 
+contains the same number of samples for each class.
+"""
 class BalancedBatchSampler(torch.utils.data.sampler.Sampler):
     def __init__(self, dataset, labels=None):
         self.labels = labels
         self.dataset = dict()
-        self.balanced_max = 0
-        # Save all the indices for all the classes
-        for idx in range(0, len(dataset)):
-            label = self._get_label(dataset, idx)
+        self.max_class_samples = 0
+
+        # Save every index for every class
+        for index in range(0, len(dataset)):
+            label = self._get_label(dataset, index)
             if label not in self.dataset:
                 self.dataset[label] = list()
-            self.dataset[label].append(idx)
-            self.balanced_max = len(self.dataset[label]) \
-                if len(self.dataset[label]) > self.balanced_max else self.balanced_max
-        
+            self.dataset[label].append(index)
+
+        # Obtain highest number of samples for a class
+        for label_class in self.dataset.keys():
+            if len(self.dataset[label_class]) > self.max_class_samples:
+                self.max_class_samples = len(self.dataset[label_class])
+
         # Oversample the classes with fewer elements than the max
         for label in self.dataset:
-            while len(self.dataset[label]) < self.balanced_max:
+            while len(self.dataset[label]) < self.max_class_samples:
                 self.dataset[label].append(random.choice(self.dataset[label]))
+
         self.keys = list(self.dataset.keys())
         self.currentkey = 0
-        self.indices = [-1]*len(self.keys)
+        self.indices = [-1] * len(self.keys)
 
     def __iter__(self):
-        while self.indices[self.currentkey] < self.balanced_max - 1:
+        # Sample class until max_class_samples is met
+        # Iterate through to sample classes one by one to ensure all classes sampled equally
+        while self.indices[self.currentkey] < self.max_class_samples - 1:
             self.indices[self.currentkey] += 1
             yield self.dataset[self.keys[self.currentkey]][self.indices[self.currentkey]]
             self.currentkey = (self.currentkey + 1) % len(self.keys)
-        self.indices = [-1]*len(self.keys)
-    
-    def _get_label(self, dataset, idx, labels = None):
-        if self.labels is not None:
-            return self.labels[idx].item()
-        else:
-            # Trying guessing
-            dataset_type = type(dataset)
-            if is_torchvision_installed and dataset_type is torchvision.datasets.MNIST:
-                return dataset.train_labels[idx].item()
-            elif is_torchvision_installed and dataset_type is torchvision.datasets.ImageFolder:
-                return dataset.imgs[idx][1]
-            else:
-                raise Exception("You should pass the tensor of labels to the constructor as second argument")
 
+        # Reset indices at end of epoch when all clases have been sampled
+        self.indices = [-1] * len(self.keys)
+
+    # Return target label for sample
+    def _get_label(self, dataset, index, labels=None):
+        return self.labels[index].item()
+
+    # Return total length of dataset when sampled equally
+    # max_class_samples * number of classes
     def __len__(self):
-        return self.balanced_max*len(self.keys)
+        return self.max_class_samples * len(self.keys)

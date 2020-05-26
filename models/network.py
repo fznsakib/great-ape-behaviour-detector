@@ -9,8 +9,8 @@ import models.vgg as vgg
 from utils.utils import *
 from models.loss import *
 
-
-def initialise_model(model_name, pretrained, num_classes, channels):
+# Return model as required from config
+def initialise_model(cnn, pretrained, num_classes, channels):
     model_initialisers = {
         "resnet18": resnet.resnet18,
         "resnet50": resnet.resnet50,
@@ -19,32 +19,33 @@ def initialise_model(model_name, pretrained, num_classes, channels):
         "vgg16": vgg.vgg16,
         "vgg16_bn": vgg.vgg16_bn,
         "vgg19": vgg.vgg19,
-        "vgg19": vgg.vgg19_bn
+        "vgg19": vgg.vgg19_bn,
     }
 
-    model = model_initialisers[model_name](pretrained, num_classes, channels)
+    model = model_initialisers[cnn](pretrained, num_classes, channels)
     return model
 
+
+"""
+Initial Two-Stream model using 3D Convolutional Fusion
+"""
 class FusionNet(nn.Module):
     def __init__(self, spatial, temporal, num_classes):
         super(FusionNet, self).__init__()
-        
-        # Remove final avgpool and fc to produce an output feature size of:
+
+        # Remove final avgpool and fc layers to produce an output feature size of:
         # N x 512 x 7 x 7
         self.spatial = nn.Sequential(*list(spatial.children())[:-2])
-        
-        # Freeze spatial layers
-        # for param in self.spatial.parameters():
-        #     param.requires_grad = False
-        
-        
         self.temporal = nn.Sequential(*list(temporal.children())[:-2])
-        
+
+        # 3D convolution fusion
         self.layer1 = nn.Sequential(
             nn.Conv3d(1024, 512, 1, stride=1, padding=1, dilation=1, bias=True),
             nn.ReLU(),
             nn.MaxPool3d(kernel_size=2, stride=2),
         )
+
+        # Fully connected classifier
         self.fc = nn.Sequential(
             nn.Linear(8192, 2048),
             nn.ReLU(),
@@ -56,106 +57,190 @@ class FusionNet(nn.Module):
         )
 
     def forward(self, spatial_data, temporal_data):
+        # Get feature map from ResNet-18 streams
         x1 = self.spatial(spatial_data)
         x2 = self.temporal(temporal_data)
 
+        # Stack spatial and temporal feature maps
         y = torch.cat((x1, x2), dim=1)
-
         for i in range(x1.size(1)):
             y[:, (2 * i), :, :] = x1[:, i, :, :]
             y[:, (2 * i + 1), :, :] = x2[:, i, :, :]
-            
+
         y = y.view(y.size(0), 1024, 1, 7, 7)
+
+        # Convolutional fusion
         cnn_out = self.layer1(y)
         cnn_out = cnn_out.view(cnn_out.size(0), -1)
+
+        # Fully connected classifier
         out = self.fc(cnn_out)
         return out
 
+
+"""
+Final Two-Stream model using LSTM
+"""
 class LSTMFusionNet(nn.Module):
-    def __init__(self, spatial, temporal, num_classes, lstm_layers, hidden_size, dropout, device):
+    def __init__(
+        self,
+        spatial,
+        temporal,
+        num_classes,
+        lstm_layers,
+        hidden_size,
+        fc_dropout,
+        lstm_dropout,
+        device,
+    ):
         super(LSTMFusionNet, self).__init__()
         self.hidden_size = hidden_size
         self.lstm_layers = lstm_layers
         self.num_classes = num_classes
         self.device = device
+        self.dropout = nn.Dropout(fc_dropout)
 
+        # Remove final average pool layer
         self.spatial = nn.Sequential(*list(spatial.children())[:-1])
         self.temporal = nn.Sequential(*list(temporal.children())[:-1])
-        
-        self.lstm_spatial = nn.LSTM(input_size = 512,
-                    hidden_size = hidden_size,
-                    num_layers = lstm_layers,
-                    batch_first = True,
-                    dropout = dropout)
-        
-        self.lstm_temporal = nn.LSTM(input_size = 512,
-                    hidden_size = hidden_size,
-                    num_layers = lstm_layers,
-                    batch_first = True,
-                    dropout = dropout)
-        
+
+        # Initialise LSTMs for both streams
+        self.lstm_spatial = nn.LSTM(
+            input_size=512,
+            hidden_size=hidden_size,
+            num_layers=lstm_layers,
+            batch_first=True,
+            dropout=lstm_dropout,
+        )
+
+        self.lstm_temporal = nn.LSTM(
+            input_size=512,
+            hidden_size=hidden_size,
+            num_layers=lstm_layers,
+            batch_first=True,
+            dropout=lstm_dropout,
+        )
+        # Fully connected classifier
         self.fc1 = nn.Linear(1024, 512)
         self.fc2 = nn.Linear(512, num_classes)
 
     def forward(self, spatial_data, temporal_data):
-        # Spatial forward
-        h0_spatial = torch.zeros(self.lstm_layers, spatial_data.size(0), self.hidden_size).requires_grad_().to(self.device)
-        c0_spatial = torch.zeros(self.lstm_layers, spatial_data.size(0), self.hidden_size).requires_grad_().to(self.device)
-        
+        """
+        Spatial forward pass
+        """
+        # Initialise hidden state and cell states (BPTT)
+        h0_spatial = (
+            torch.zeros(self.lstm_layers, spatial_data.size(0), self.hidden_size)
+            .requires_grad_()
+            .to(self.device)
+        )
+        c0_spatial = (
+            torch.zeros(self.lstm_layers, spatial_data.size(0), self.hidden_size)
+            .requires_grad_()
+            .to(self.device)
+        )
+
+        # Reduce dimensionality of input data for ResNet-18
         batch_size, seq_length, c, h, w = spatial_data.shape
         spatial_data = spatial_data.view(batch_size * seq_length, c, h, w)
         spatial_out = self.spatial(spatial_data)
+
+        # Revert data back to sequence for LSTM
         spatial_out = spatial_out.view(batch_size, seq_length, -1)
-        
-        spatial_out, (hn_spatial, cn_spatial) = self.lstm_spatial(spatial_out, (h0_spatial.detach(), c0_spatial.detach()))
+        spatial_out, (hn_spatial, cn_spatial) = self.lstm_spatial(
+            spatial_out, (h0_spatial.detach(), c0_spatial.detach())
+        )
+
+        # Get hidden state of LSTM for final time-step
         spatial_out = spatial_out[:, -1, :]
-        
-        # Temporal forward
-        h0_temporal = torch.zeros(self.lstm_layers, temporal_data.size(0), self.hidden_size).requires_grad_().to(self.device)
-        c0_temporal = torch.zeros(self.lstm_layers, temporal_data.size(0), self.hidden_size).requires_grad_().to(self.device)
-        
+
+        """
+        Temporal forward pass
+        """
+        # Initialise hidden state and cell states (BPTT)
+        h0_temporal = (
+            torch.zeros(self.lstm_layers, temporal_data.size(0), self.hidden_size)
+            .requires_grad_()
+            .to(self.device)
+        )
+        c0_temporal = (
+            torch.zeros(self.lstm_layers, temporal_data.size(0), self.hidden_size)
+            .requires_grad_()
+            .to(self.device)
+        )
+
+        # Reduce dimensionality of input data for ResNet-18
         batch_size, seq_length, c, h, w = temporal_data.shape
         temporal_data = temporal_data.view(batch_size * seq_length, c, h, w)
         temporal_out = self.temporal(temporal_data)
+
+        # Revert data back to sequence for LSTM
         temporal_out = temporal_out.view(batch_size, seq_length, -1)
-        
-        temporal_out, (hn_temporal, cn_temporal) = self.lstm_temporal(temporal_out, (h0_temporal.detach(), c0_temporal.detach()))
+        temporal_out, (hn_temporal, cn_temporal) = self.lstm_temporal(
+            temporal_out, (h0_temporal.detach(), c0_temporal.detach())
+        )
+
+        # Get hidden state of LSTM for final time-step
         temporal_out = temporal_out[:, -1, :]
-        
-        # concatenate features
+
+        """
+        Fusion
+        """
+        # Concatenate vectors of size 512 of spatial and temporal LSTM output
         fused_out = torch.cat((spatial_out, temporal_out), dim=1)
-        
+
+        # Fully connected classifier
         fused_out = F.relu(self.fc1(fused_out))
-                               
+        fused_out = self.dropout(fused_out)
+
         return self.fc2(fused_out)
-    
+
+
 class CNN:
-    def __init__(self, model_name, loss, lr, regularisation, num_classes, temporal_stack, device):
+    def __init__(self, cfg, num_classes, device):
         super().__init__()
-        
-        self.lr = lr
+
+        # Initialise parameters
+        self.lr = cfg.hyperparameters.learning_rate
         self.epoch = 0
         self.accuracy = 0
         self.device = device
 
+        # Initialise ResNet CNNs as required by config
         spatial_model = initialise_model(
-            model_name=model_name, pretrained=True, num_classes=num_classes, channels=3
+            cnn=cfg.cnn, pretrained=True, num_classes=num_classes, channels=3
         )
-        
+
         temporal_model = initialise_model(
-            model_name=model_name, pretrained=True, num_classes=num_classes, channels=2
+            cnn=cfg.cnn, pretrained=True, num_classes=num_classes, channels=2
         )
-        
-        self.model = LSTMFusionNet(spatial_model, temporal_model, num_classes, 1, 512, 0, device)
+
+        # Initialise two-stream with LSTM model
+        self.model = LSTMFusionNet(
+            spatial=spatial_model,
+            temporal=temporal_model,
+            num_classes=num_classes,
+            lstm_layers=cfg.lstm.layers,
+            hidden_size=cfg.lstm.hidden_units,
+            fc_dropout=cfg.hyperparameters.dropout,
+            lstm_dropout=cfg.lstm.dropout,
+            device=device,
+        )
 
         # Send the model to GPU
         self.model = self.model.to(device)
 
-        self.criterion = initialise_loss(loss)
-        self.optimiser = optim.SGD(self.model.parameters(), lr=self.lr, momentum=0.9, weight_decay=regularisation)
+        # Initialise loss, optimiser and learning rate scheduler
+        self.criterion = initialise_loss(cfg.loss)
+        self.optimiser = optim.SGD(
+            self.model.parameters(),
+            lr=self.lr,
+            momentum=cfg.hyperparameters.sgd_momentum,
+            weight_decay=cfg.hyperparameters.regularisation,
+        )
         self.scheduler = ReduceLROnPlateau(self.optimiser, "min", patience=3, verbose=True)
 
-
+    # Load saved model by name
     def load_checkpoint(self, name, checkpoint_path, best=False):
         checkpoint_file_path = f"{checkpoint_path}/{name}/model"
 

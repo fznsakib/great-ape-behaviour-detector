@@ -1,6 +1,6 @@
-"""""" """""" """""" """""" """""" """""" """""" """
+"""
 Imports
-""" """""" """""" """""" """""" """""" """""" """"""
+"""
 import os
 import torch
 import torchvision
@@ -21,11 +21,9 @@ from tabulate import tabulate
 from pathlib import Path
 from tqdm import tqdm
 
-"""""" """""" """""" """""" """""" """""" """""" """
+"""
 Custom Library Imports
-""" """""" """""" """""" """""" """""" """""" """"""
-import models.spatial as spatial
-import models.temporal as temporal
+"""
 import models.network as network
 import controllers.evaluator as evaluator
 import utils.metrics as metrics
@@ -33,9 +31,9 @@ from dataset.dataset import GreatApeDataset
 from utils.utils import *
 from utils.config_parser import ConfigParser
 
-"""""" """""" """""" """""" """""" """""" """""" """
+"""
 GPU Initialisation
-""" """""" """""" """""" """""" """""" """""" """"""
+"""
 torch.backends.cudnn.benchmark = True
 
 # Check if GPU available, and use if so. Otherwise, use CPU
@@ -45,6 +43,9 @@ else:
     DEVICE = torch.device("cpu")
 
 
+"""
+Main
+"""
 def main(cfg):
 
     classes = open(cfg.paths.classes).read().strip().split()
@@ -52,30 +53,18 @@ def main(cfg):
     start_time = datetime.datetime.now()
 
     # Initialise spatial/temporal CNNs
-    cnn = network.CNN(
-        model_name=cfg.model,
-        loss=cfg.loss,
-        lr=cfg.hyperparameters.learning_rate,
-        regularisation=cfg.hyperparameters.regularisation,
-        num_classes=len(classes),
-        temporal_stack=cfg.dataset.temporal_stack,
-        device=DEVICE,
-    )
+    cnn = network.CNN(cfg=cfg, num_classes=len(classes), device=DEVICE)
 
     # Load checkpoints
     cnn.load_checkpoint(cfg.name, cfg.paths.checkpoints, cfg.best)
 
     # Initialise test dataloader
     test_dataset = GreatApeDataset(
-        mode=cfg.mode,
-        sample_interval=cfg.dataset.sample_interval,
-        temporal_stack=cfg.dataset.temporal_stack,
-        activity_duration_threshold=cfg.dataset.activity_duration_threshold,
-        video_names=f"{cfg.paths.splits}/validationdata.txt",
+        cfg=cfg,
+        mode="test",
+        video_names=f"{cfg.paths.splits}/testdata.txt",
         classes=classes,
-        frame_dir=cfg.paths.frames,
-        annotations_dir=cfg.paths.annotations,
-        device=DEVICE
+        device=DEVICE,
     )
     test_loader = DataLoader(
         test_dataset,
@@ -86,10 +75,7 @@ def main(cfg):
 
     # Initialise evaluator
     network_evaluator = evaluator.Evaluator(
-        cnn=cnn,
-        data_loader=test_loader,
-        device=DEVICE,
-        name=cfg.name,
+        cnn=cnn, data_loader=test_loader, device=DEVICE, name=cfg.name,
     )
 
     print("==> Making predictions")
@@ -109,7 +95,7 @@ def main(cfg):
     draw_bounding_boxes(
         model_output_path,
         cfg.paths.annotations,
-        cfg.dataset.temporal_stack,
+        cfg.dataset.sequence_length,
         predictions_dict,
         classes,
     )
@@ -125,14 +111,16 @@ def main(cfg):
     print("==> Generating confusion matrix")
     metrics.compute_confusion_matrix(predictions_dict, classes, model_output_path)
 
-    print("==> Creating zip file")
-    zip_videos(model_output_path, cfg.name)
+    # Upload to AWS S3 only if bucket name is given in config
+    if cfg.bucket:
+        print("==> Creating zip file")
+        zip_videos(model_output_path, cfg.name)
 
-    print("==> Uploading to AWS S3")
-    response = upload_videos(model_output_path, cfg.name, cfg.bucket)
+        print("==> Uploading to AWS S3")
+        response = upload_videos(model_output_path, cfg.name, cfg.bucket)
 
-    if response:
-        print(f"Output download link: {response}")
+        if response:
+            print(f"Output download link: {response}")
 
     total_time = datetime.datetime.now() - start_time
     print(f"Total time: {total_time.total_seconds()}")

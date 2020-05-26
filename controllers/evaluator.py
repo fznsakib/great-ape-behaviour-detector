@@ -16,11 +16,7 @@ from utils.utils import *
 
 class Evaluator:
     def __init__(
-        self,
-        cnn: nn.Module,
-        data_loader: DataLoader,
-        device: torch.device,
-        name: str,
+        self, cnn: nn.Module, data_loader: DataLoader, device: torch.device, name: str,
     ):
         self.cnn = cnn
         self.data_loader = data_loader
@@ -30,11 +26,10 @@ class Evaluator:
 
     def predict(self):
 
-        # Turn on evaluation for networkss
+        # Turn on evaluation for network
         self.cnn.model.eval()
         results = {"labels": [], "logits": [], "predictions": []}
 
-        #  No need to track gradients for validation, we're not optimizing.
         with torch.no_grad():
             for i, (spatial_data, temporal_data, label, metadata) in enumerate(
                 tqdm(self.data_loader, desc="Prediction", leave=False, unit="sample")
@@ -52,9 +47,10 @@ class Evaluator:
 
                 # Accumulate predictions against ground truth labels
                 prediction = logits.argmax().item()
-                
+
+                # Logits are required for Top-k accuracy
                 logits = (logits.detach().cpu()).numpy()
-                
+
                 # Collect reulsts for metrics
                 results["labels"].append(label.item())
                 results["logits"].append(logits[0].tolist())
@@ -72,16 +68,16 @@ class Evaluator:
                         "start_frame": start_frame.item(),
                     }
                 )
-                
+
         # Get accuracy by checking for correct predictions across all predictions
         top1, top3 = metrics.compute_topk_accuracy(
             torch.LongTensor(results["logits"]), torch.LongTensor(results["labels"]), topk=(1, 3)
         )
-        
+
         # Get per class accuracies and sort by label value (0...9)
         class_accuracy = metrics.compute_class_accuracy(results["labels"], results["predictions"])
         class_accuracy_average = mean(class_accuracy.values())
-        
+
         print("==> Per Class Results")
         per_class_results = [
             [
@@ -94,24 +90,24 @@ class Evaluator:
                 "sitting",
                 "sitting_on_back",
                 "standing",
-                "walking"
+                "walking",
             ],
             [
                 "Accuracy",
-                f'{class_accuracy[0]:2.2f}',
-                f'{class_accuracy[1]:2.2f}',
-                f'{class_accuracy[2]:2.2f}',
-                f'{class_accuracy[3]:2.2f}',
-                f'{class_accuracy[4]:2.2f}',
-                f'{class_accuracy[5]:2.2f}',
-                f'{class_accuracy[6]:2.2f}',
-                f'{class_accuracy[7]:2.2f}',
-                f'{class_accuracy[8]:2.2f}'
-            ]
+                f"{class_accuracy[0]:2.2f}",
+                f"{class_accuracy[1]:2.2f}",
+                f"{class_accuracy[2]:2.2f}",
+                f"{class_accuracy[3]:2.2f}",
+                f"{class_accuracy[4]:2.2f}",
+                f"{class_accuracy[5]:2.2f}",
+                f"{class_accuracy[6]:2.2f}",
+                f"{class_accuracy[7]:2.2f}",
+                f"{class_accuracy[8]:2.2f}",
+            ],
         ]
-        
+
         print(tabulate(per_class_results, tablefmt="fancy_grid"))
-        
+
         print("==> Overall Results")
         test_results = [
             ["Average Class Accuracy:", f"{class_accuracy_average:2f}"],

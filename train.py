@@ -1,11 +1,12 @@
-"""""" """""" """""" """""" """""" """""" """""" """
+"""
 Imports
-""" """""" """""" """""" """""" """""" """""" """"""
+"""
 import os
 import torch
 import torchvision
 import argparse
 import shutil
+import random
 import numpy as np
 import matplotlib.pyplot as plt
 from multiprocessing import cpu_count
@@ -16,21 +17,20 @@ from torch.utils.tensorboard import SummaryWriter
 from tabulate import tabulate
 from pathlib import Path
 
-"""""" """""" """""" """""" """""" """""" """""" """
+"""
 Custom Library Imports
-""" """""" """""" """""" """""" """""" """""" """"""
-import models.spatial as spatial
-import models.temporal as temporal
+"""
 import models.network as network
+import models.loss as loss
 import controllers.trainer as trainer
 from dataset.dataset import GreatApeDataset
 from dataset.sampler import BalancedBatchSampler
 from utils.utils import *
 from utils.config_parser import ConfigParser
 
-"""""" """""" """""" """""" """""" """""" """""" """
+"""
 GPU Initialisation
-""" """""" """""" """""" """""" """""" """""" """"""
+"""
 torch.backends.cudnn.benchmark = True
 
 # Check if GPU available, and use if so. Otherwise, use CPU
@@ -39,27 +39,19 @@ if torch.cuda.is_available():
 else:
     DEVICE = torch.device("cpu")
 
-"""""" """""" """""" """""" """""" """""" """""" """
+"""
 Argument Parser
-""" """""" """""" """""" """""" """""" """""" """"""
-
-default_data_path = Path(f"{os.getcwd()}/../scratch/data")
-default_checkpoints_path = Path(f"{os.getcwd()}/../scratch/checkpoints")
-default_logs_path = Path(f"{os.getcwd()}/../scratch/logs")
-default_classes_path = Path(f"{default_data_path}/classes.txt")
+"""
 
 parser = argparse.ArgumentParser(
     description="A spatial & temporal-based two-stream convolutional neural network for recognising great ape behaviour.",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 
-import random
 
-"""""" """""" """""" """""" """""" """""" """""" """
+"""
 Main
-""" """""" """""" """""" """""" """""" """""" """"""
-
-
+"""
 def main(cfg):
 
     classes = open(cfg.paths.classes).read().strip().split()
@@ -67,42 +59,34 @@ def main(cfg):
     print("==> Initialising training dataset")
 
     train_dataset = GreatApeDataset(
-        mode=cfg.mode,
-        sample_interval=cfg.dataset.sample_interval,
-        temporal_stack=cfg.dataset.temporal_stack,
-        activity_duration_threshold=cfg.dataset.activity_duration_threshold,
+        cfg=cfg,
+        mode="train",
         video_names=f"{cfg.paths.splits}/trainingdata.txt",
         classes=classes,
-        frame_dir=cfg.paths.frames,
-        annotations_dir=cfg.paths.annotations,
-        device=DEVICE
+        device=DEVICE,
     )
-    
-    if cfg.dataloader.sampler:
-        sampler=BalancedBatchSampler(train_dataset, train_dataset.labels)
+
+    if cfg.dataloader.balanced_sampler:
+        sampler = BalancedBatchSampler(train_dataset, train_dataset.labels)
     else:
-        sampler=None
+        sampler = None
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=cfg.dataloader.batch_size,
         shuffle=cfg.dataloader.shuffle,
         num_workers=cfg.dataloader.worker_count,
-        sampler=sampler
+        sampler=sampler,
     )
 
     print("==> Initialising validation dataset")
 
     test_dataset = GreatApeDataset(
-        mode="validation",
-        sample_interval=20,
-        temporal_stack=cfg.dataset.temporal_stack,
-        activity_duration_threshold=cfg.dataset.activity_duration_threshold,
+        cfg=cfg,
+        mode="test",
         video_names=f"{cfg.paths.splits}/validationdata.txt",
         classes=classes,
-        frame_dir=cfg.paths.frames,
-        annotations_dir=cfg.paths.annotations,
-        device=DEVICE
+        device=DEVICE,
     )
     test_loader = DataLoader(
         test_dataset,
@@ -118,7 +102,7 @@ def main(cfg):
 
     dataset_argument_table = [
         ["Sample Interval", cfg.dataset.sample_interval],
-        ["Temporal Stack Size", cfg.dataset.temporal_stack],
+        ["Temporal Stack Size", cfg.dataset.sequence_length],
         ["Activity Duration Threshold", cfg.dataset.activity_duration_threshold,],
     ]
 
@@ -172,17 +156,13 @@ def main(cfg):
         )
     )
 
+    # If weighted cross entropy to be used, initialise weights
+    if cfg.loss.cross_entropy.weighted:
+        loss.initialise_ce_weights(train_class_sample_count)
+
     # Initialise fusion CNN with spatial and temporal streams
     print("==> Initialising two-stream fusion CNN")
-    cnn = network.CNN(
-        model_name=cfg.model,
-        loss=cfg.loss,
-        lr=cfg.hyperparameters.learning_rate,
-        regularisation=cfg.hyperparameters.regularisation,
-        num_classes=len(classes),
-        temporal_stack=cfg.dataset.temporal_stack,
-        device=DEVICE
-    )
+    cnn = network.CNN(cfg=cfg, num_classes=len(classes), device=DEVICE)
 
     # If resuming, then load saved checkpoints
     if cfg.resume:
@@ -194,8 +174,7 @@ def main(cfg):
         log_dir = f"{cfg.paths.logs}/{cfg.name}"
         print(f"==> Writing logs to {os.path.basename(log_dir)}")
         summary_writer = SummaryWriter(str(log_dir), flush_secs=5)
-        shutil.copy('config.json', log_dir)
-        
+        shutil.copy("config.json", log_dir)
 
     # Initialise trainer with both CNNs
     cnn_trainer = trainer.Trainer(
@@ -220,9 +199,9 @@ def main(cfg):
     )
 
 
-"""""" """""" """""" """""" """""" """""" """""" """
+"""
 Call main()
-""" """""" """""" """""" """""" """""" """""" """"""
+"""
 if __name__ == "__main__":
     cfg = ConfigParser().config
     main(cfg)

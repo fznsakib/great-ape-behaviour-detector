@@ -5,6 +5,7 @@ import torch.utils.model_zoo as model_zoo
 import torch
 from torch.autograd import Variable
 
+# Download links for pre-trained ResNet weights
 model_urls = {
     "resnet18": "https://download.pytorch.org/models/resnet18-5c106cde.pth",
     "resnet34": "https://download.pytorch.org/models/resnet34-333f7ec4.pth",
@@ -14,6 +15,9 @@ model_urls = {
 }
 
 
+"""
+ResNet Constructor
+"""
 def conv3x3(in_planes, out_planes, stride=1):
     "3x3 convolution with padding"
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
@@ -150,6 +154,10 @@ class ResNet(nn.Module):
         return out
 
 
+"""
+Network Customisation
+"""
+
 # Transform the original 3 channel weight to the number channels requested
 def cross_modality_pretrain(conv1_weight, channels):
     # Accumulate conv1 weights across the 3 channels
@@ -184,11 +192,11 @@ def weight_transform(model_dict, pretrain_dict, channels):
     return model_dict
 
 
+"""
+ResNet Definitions
+"""
+
 def resnet18(pretrained, num_classes, channels):
-    """Constructs a ResNet-18 model.
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
     model = ResNet(BasicBlock, [2, 2, 2, 2], num_classes=num_classes, channels=channels)
     if pretrained:
         pretrain_dict = model_zoo.load_url(model_urls["resnet18"])
@@ -199,7 +207,6 @@ def resnet18(pretrained, num_classes, channels):
 
 
 def resnet50(pretrained, num_classes, channels):
-
     model = ResNet(Bottleneck, [3, 4, 6, 3], num_classes=num_classes, channels=channels)
     if pretrained:
         pretrain_dict = model_zoo.load_url(model_urls["resnet50"])
@@ -210,7 +217,6 @@ def resnet50(pretrained, num_classes, channels):
 
 
 def resnet101(pretrained, num_classes, channels):
-
     model = ResNet(Bottleneck, [3, 4, 23, 3], num_classes=num_classes, channels=channels)
     if pretrained:
         pretrain_dict = model_zoo.load_url(model_urls["resnet101"])
@@ -222,7 +228,6 @@ def resnet101(pretrained, num_classes, channels):
 
 
 def resnet152(pretrained, num_classes, channels):
-
     model = ResNet(Bottleneck, [3, 8, 36, 3], num_classes, channels)
     if pretrained:
         pretrain_dict = model_zoo.load_url(model_urls["resnet152"])
