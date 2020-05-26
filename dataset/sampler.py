@@ -20,17 +20,10 @@ class BalancedBatchSampler(torch.utils.data.sampler.Sampler):
                 self.dataset[label] = list()
             self.dataset[label].append(index)
 
-            # Keep track of the number of samples for the largest class
-            self.max_class_samples = (
-                len(self.dataset[label])
-                if len(self.dataset[label]) > self.max_class_samples
-                else self.max_class_samples
-            )
-
         # Obtain highest number of samples for a class
-        for label in self.dataset.keys():
-            if len(self.dataset[label]) > self.max_class_samples:
-                self.max_class_samples = len(self.dataset[label])
+        for label_class in self.dataset.keys():
+            if len(self.dataset[label_class]) > self.max_class_samples:
+                self.max_class_samples = len(self.dataset[label_class])
 
         # Oversample the classes with fewer elements than the max
         for label in self.dataset:

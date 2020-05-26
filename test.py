@@ -62,7 +62,7 @@ def main(cfg):
     test_dataset = GreatApeDataset(
         cfg=cfg,
         mode="test",
-        video_names=f"{cfg.paths.splits}/crossval_test4.txt",
+        video_names=f"{cfg.paths.splits}/testdata.txt",
         classes=classes,
         device=DEVICE,
     )

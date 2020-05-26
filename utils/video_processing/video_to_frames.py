@@ -8,7 +8,7 @@ print("Video to frame converter")
 print("Data directory provided should contain a 'videos' directory containing the videos.")
 
 dataset_path = input("Provide path to data directory: ")
-data_list_path = input("Provide path to txt file with names of videos to convert to optical flow: ")
+data_list_path = input("Provide path to txt file with names of videos to convert to RGB frames: ")
 
 # Get list of video names which need to be split
 filenames = open(data_list_path).read().strip().split()
