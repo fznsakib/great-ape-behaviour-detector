@@ -45,3 +45,20 @@ A total of 9 commonly exhibited behaviours among gorillas and chimpanzees are at
 The final thesis paper documenting all work and experiments related to this repository can be found [here](dissertation.pdf). 
 
 Appendix A of the thesis describes the **dataset**. Appendix B outlines in detail the **execution instructions** for the model. [Contact me](mailto:fznsakib@gmail.com) if further help is needed.
+
+## Citation
+
+This work was submitted and presented at the Visual observation and analysis of Vertebrate And Insect Behaviour workshop at the International Conference on Pattern Recognition (ICPR 2020). If you do use this work as part of your research, please cite [Visual Recognition of Great Ape Behaviours in the Wild](https://arxiv.org/abs/2011.10759).
+
+```text
+@misc{sakib2020visual,
+      title={Visual Recognition of Great Ape Behaviours in the Wild}, 
+      author={Faizaan Sakib and Tilo Burghardt},
+      year={2020},
+      maintitle={International Conference on Pattern Recognition 2020},
+      booktitle={Workshop on the Visual Observation and Analysis of Vertebrate and Insect Behaviour},
+      eprint={2011.10759},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
+```
