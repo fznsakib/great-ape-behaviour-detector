@@ -12,6 +12,10 @@ Whilst species detection and individual identification of great apes have been a
   <img src="https://user-images.githubusercontent.com/15062683/84400855-7a490180-abfa-11ea-972b-6f060a080c01.gif" width=400>
 </p>
 
+<p align="center">
+Copyright of Videos resides with the Pan African Project at the MPI EVA.
+</p>
+
 After evaluating 100 test videos in a 4-fold cross validation procedure, the results are as follows:
 
 <p align="center">
@@ -62,3 +66,11 @@ This work was submitted and presented at the Visual observation and analysis of 
       primaryClass={cs.CV}
 }
 ```
+
+## Acknowledgements
+
+We would like to thank the entire team of the Pan African Programme: ‘The Cultured Chimpanzee’ and its collaborators for allowing the use of their data for this paper. Please contact the copyright holder Pan African Programme at http://panafrican.eva.mpg.de to obtain the videos used from the dataset. Particularly, we thank: H Kuehl, C Boesch, M Arandjelovic, and P Dieguez. We would also like to thank: K Zuberbuehler, K Corogenes, E Normand, V Vergnes, A Meier, J Lapuente, D Dowd, S Jones, V Leinert, EWessling, H Eshuis, K Langergraber, S Angedakin, S Marrocoli, K Dierks, T C Hicks, J Hart, K Lee, and M Murai. 
+
+Thanks also to the team at https://www.chimpandsee.org. The work that allowed for the collection of the dataset was funded by the Max Planck Society, Max Planck Society Innovation Fund, and Heinz L. Krekeler. 
+
+In this respect we would also like to thank: Foundation Ministre de la Recherche Scientifique, and Ministre des Eaux et Forłts in Cote d’Ivoire; Institut Congolais pour la Conservation de la Nature and Ministre de la Recherch Scientifique in DR Congo; Forestry Development Authority in Liberia; Direction des Eaux, Forłts Chasses et de la Conser- vation des Sols, Senegal; and Uganda National Council for Science and Technology, Uganda Wildlife Authority, National Forestry Authority in Uganda.
